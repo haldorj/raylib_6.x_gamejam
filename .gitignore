@@ -1,0 +1,17 @@
+# Directories
+.vs/
+binaries/
+intermediate/
+.idea/
+
+# Files
+*.user
+*.vcxproj
+*.vcxproj.filters
+*.sln
+
+#Premake
+!vendor/bin
+
+# to remove a folder from git cache:
+# git rm -r --cached path_to_your_folder/
