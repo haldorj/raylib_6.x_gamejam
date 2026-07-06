@@ -13,7 +13,9 @@ namespace
     constexpr auto TargetFPS{ 60 };
 
     RenderTexture2D renderTexture{};
-    Vector2 ballPosition{};
+    Vector2 PlayerPosition{};
+
+    Texture PlayerTexture{};
 }
 
 static void Init()
@@ -27,7 +29,10 @@ static void Init()
     renderTexture = LoadRenderTexture(windowWidth, windowHeight);
     SetTextureFilter(renderTexture.texture, TEXTURE_FILTER_BILINEAR);
 
-    ballPosition = { windowWidth / 2, windowHeight / 2 };
+    PlayerPosition = { windowWidth / 2, windowHeight / 2 };
+
+    PlayerTexture = LoadTexture("assets/textures/cat.png");
+    assert(IsTextureValid(PlayerTexture));
 }
 
 static void Shutdown()
@@ -43,10 +48,10 @@ static void  UpdateGame()
 
 static void HandleInput()
 {
-    if (IsKeyDown(KEY_RIGHT)) ballPosition.x += 2.0f;
-    if (IsKeyDown(KEY_LEFT)) ballPosition.x -= 2.0f;
-    if (IsKeyDown(KEY_UP)) ballPosition.y -= 2.0f;
-    if (IsKeyDown(KEY_DOWN)) ballPosition.y += 2.0f;
+    if (IsKeyDown(KEY_RIGHT)) PlayerPosition.x += 2.0f;
+    if (IsKeyDown(KEY_LEFT)) PlayerPosition.x -= 2.0f;
+    if (IsKeyDown(KEY_UP)) PlayerPosition.y -= 2.0f;
+    if (IsKeyDown(KEY_DOWN)) PlayerPosition.y += 2.0f;
 }
 
 static void DrawFrame()
@@ -64,7 +69,7 @@ static void DrawFrame()
     // TODO: Draw your game screen here
     DrawText("move the ball with arrow keys", 10, 10, 20, DARKGRAY);
 
-    DrawCircleV(ballPosition, 50, MAROON);
+    DrawTextureEx(PlayerTexture, PlayerPosition, 0.0f, 1.0f, WHITE);
 
     //
     EndTextureMode();
