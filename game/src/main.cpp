@@ -2,7 +2,7 @@
 
 #include <ranges>
 
-#if defined(PLATFORM_WEB)
+#ifdef PLATFORM_WEB
 #include <emscripten/emscripten.h>      // Emscripten library
 #endif
 
@@ -20,7 +20,7 @@ namespace hexagon
     constexpr auto Horizontal{static_cast<int>(Width)};
     constexpr auto Vertical{static_cast<int>(Height * 0.75)};
 
-    constexpr auto Points = std::array{
+    constexpr Vector2 Points[] = {
         Vector2{.x = static_cast<float>(Width / 2.0), .y = Height},
         Vector2{.x = static_cast<float>(Width), .y = Height * 0.75},
         Vector2{.x = static_cast<float>(Width), .y = Height * 0.25},
@@ -77,19 +77,19 @@ namespace
         ClearBackground(SKYBLUE);
 
         // TODO: Draw your game screen here
-        DrawText("move the ball with arrow keys", 10, 10, 20, DARKGRAY);
+        DrawText("HEXAGONS", 10, 10, 20, DARKGRAY);
 
-        const auto drawHexgon = [](int centerX, int centerY, const Color color)
+        const auto drawHexgon = [](const int centerX, const int centerY, const Color color)
         {
-            for (size_t i = 0; i < hexagon::Points.size(); ++i)
+            for (size_t startIndex = 0; startIndex < std::size(hexagon::Points); ++startIndex)
             {
-                size_t e = {i + 1};
-                if (i + 1 >= hexagon::Points.size())
+                size_t endIndex = {startIndex + 1};
+                if (startIndex + 1 >= std::size(hexagon::Points))
                 {
-                    e = 0;
+                    endIndex = 0;
                 }
-                const auto& [startX, startY] = hexagon::Points.at(i);
-                const auto& [endX, endY] = hexagon::Points.at(e);
+                const auto& [startX, startY] = hexagon::Points[startIndex];
+                const auto& [endX, endY] = hexagon::Points[endIndex];
 
                 DrawLine(centerX + static_cast<int>(startX), centerY + static_cast<int>(startY),
                          centerX + static_cast<int>(endX), centerY + static_cast<int>(endY), 
