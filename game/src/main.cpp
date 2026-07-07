@@ -41,13 +41,16 @@ namespace hexagon
         return result;
     }
 
-    Hex PixelToHex(const Vector2 point)
+    static Hex PixelToHex(const Vector2 point)
     {
         const auto x{point.x / Size};
         const auto y{point.y / Size};
         const auto col{2.0 / 3 * x};
         const auto row{-1.0 / 3 * x + std::numbers::sqrt3 / 3 * y};
-        const auto result = Hex{.row = static_cast<int>(row), .col = static_cast<int>(col)};
+        const auto result = Hex{
+            .row = static_cast<int>(std::round(row)),
+            .col = static_cast<int>(std::round(col))
+        };
         return result;
     }
 }
@@ -84,7 +87,8 @@ namespace
 
     void HandleInput()
     {
-        MousePosition = Vector2Divide(Vector2Subtract(GetMousePosition(), Camera.offset), Vector2{Camera.zoom, Camera.zoom});
+        MousePosition = Vector2Divide(Vector2Subtract(GetMousePosition(), Camera.offset),
+                                      Vector2{Camera.zoom, Camera.zoom});
     }
 
     void UpdateGame()
@@ -110,14 +114,23 @@ namespace
         // TODO: Draw your game screen here
 
         const hexagon::Hex current{hexagon::PixelToHex(MousePosition)};
-        for (const auto row : std::views::iota(-5, 5))
+        for (const auto row : std::views::iota(-3, 4))
         {
-            for (const auto col : std::views::iota(-5, 5))
+            for (const auto col : std::views::iota(-3, 4))
             {
-                const auto pos{hexagon::HexToPixel(row, col)};
+                auto pos{hexagon::HexToPixel(row, col)};
                 const auto str{std::format("{}, {}", row, col)};
 
+                pos.x -= hexagon::Size;
+                pos.y -= hexagon::Size;
+
                 auto color = WHITE;
+                // origin
+                if (row == 0 && col == 0)
+                {
+                    color = YELLOW;
+                }
+
                 if (row == current.row && col == current.col)
                 {
                     color = GREEN;
@@ -126,10 +139,9 @@ namespace
                 DrawTextureEx(Hexagon, pos, 0.f, 1.0f, color);
             }
         }
+        DrawText(std::format("Mouse X{}, Y{}", MousePosition.x, MousePosition.y).c_str(),
+                 -GamePixelHeight / 2, -GamePixelHeight / 2, 8, BLUE);
 
-        DrawCircle(static_cast<int>(MousePosition.x), static_cast<int>(MousePosition.y), 2, RED);
-        DrawText(std::format("Mouse X{}, Y{}", MousePosition.x, MousePosition.y).c_str(), 0,0, 8, WHITE);
-        
         EndMode2D();
 
         // TODO: Draw everything that requires to be drawn at this point, maybe UI?
