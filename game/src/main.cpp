@@ -96,6 +96,7 @@ namespace
         InitWindow(WindowWidth, WindowHeight, "");
         SetTargetFPS(TargetFps);
 
+
         GameMem = std::make_unique<GameMemory>();
 
         GameMem->hexagon = LoadTexture("assets/textures/flathex.png");
@@ -108,6 +109,7 @@ namespace
 
         // Init map
         GameMem->tileMap.Init();
+
     }
 
     void Shutdown()

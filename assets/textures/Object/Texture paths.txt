@@ -1,0 +1,4 @@
+Texture paths
+"assets/textures/Object/explosive directional.png"
+"assets/textures/Object/explosive.png"
+"assets/textures/Object/Sprite-0003.png"
