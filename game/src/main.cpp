@@ -12,13 +12,6 @@
 namespace hexagon
 {
     // Flat top orientation
-
-    struct Hex
-    {
-        int row;
-        int col;
-    };
-
     // Measurements
     constexpr auto Size{8.0};
     [[maybe_unused]] constexpr auto Width{2.0 * Size};
@@ -27,32 +20,86 @@ namespace hexagon
     // Distances
     [[maybe_unused]] constexpr auto Horizontal{Width * 0.75};
     [[maybe_unused]] constexpr auto Vertical{Height};
+}
 
-    static Vector2 HexToPixel(const int row, const int column)
+struct MapTile
+{
+    int row;
+    int col;
+    bool isValid;
+};
+
+struct MapTiles
+{
+    // Number of tiles in each direction from origin
+    void Init()
     {
-        // Hex to cartesian
-        const auto x{3.0 / 2 * static_cast<double>(column)};
-        const auto y{std::numbers::sqrt3 / 2.0 * column + std::numbers::sqrt3 * row};
-        // Scale cartesian coordinates
-        const auto result = Vector2{
-            .x = static_cast<float>(x * Size),
-            .y = static_cast<float>(y * Size)
-        };
-        return result;
+        for (const auto& row : iterator)
+        {
+            for (const auto& col : iterator)
+            {
+                auto& currenTile {map[row + offset][col + offset]};
+                currenTile = {.row = row, .col = col};
+                
+                if (row == 0 && col == 0)
+                {
+                    currenTile.isValid = true;
+                    continue;
+                }
+                currenTile.isValid = false;
+            }
+        }
     }
 
-    static Hex PixelToHex(const Vector2 point)
+    void SetValid(const int row, const int col)
     {
-        const auto x{point.x / Size};
-        const auto y{point.y / Size};
-        const auto col{2.0 / 3 * x};
-        const auto row{-1.0 / 3 * x + std::numbers::sqrt3 / 3 * y};
-        const auto result = Hex{
-            .row = static_cast<int>(std::round(row)),
-            .col = static_cast<int>(std::round(col))
-        };
-        return result;
+        if (row < -offset || row > offset || col < -offset || col > offset)
+        {
+            return;
+        }
+
+        auto& currenTile {map[row + offset][col + offset]};
+        currenTile.isValid = !currenTile.isValid;
     }
+
+    static constexpr auto offset{10};
+    static constexpr auto numRows{offset * 2 + 1};
+    static constexpr auto numCols{offset * 2 + 1};
+
+    static constexpr auto iterator{std::views::iota(-offset, offset)};
+
+    MapTile map[numRows][numCols] = {};
+};
+
+struct GameState
+{
+    MapTiles tileMap;
+};
+
+static Vector2 HexToPixel(const int row, const int column)
+{
+    // Hex to cartesian
+    const auto x{3.0 / 2 * static_cast<double>(column)};
+    const auto y{std::numbers::sqrt3 / 2.0 * column + std::numbers::sqrt3 * row};
+    // Scale cartesian coordinates
+    const auto result = Vector2{
+        .x = static_cast<float>(x * hexagon::Size),
+        .y = static_cast<float>(y * hexagon::Size)
+    };
+    return result;
+}
+
+static MapTile PixelToHex(const Vector2 point)
+{
+    const auto x{point.x / hexagon::Size};
+    const auto y{point.y / hexagon::Size};
+    const auto col{2.0 / 3 * x};
+    const auto row{-1.0 / 3 * x + std::numbers::sqrt3 / 3 * y};
+    const auto result = MapTile{
+        .row = static_cast<int>(std::round(row)),
+        .col = static_cast<int>(std::round(col))
+    };
+    return result;
 }
 
 namespace
@@ -66,6 +113,8 @@ namespace
     Texture2D Hexagon;
     Vector2 MousePosition{};
 
+    GameState gameState;
+
     void Init()
     {
 #ifndef _DEBUG
@@ -78,6 +127,12 @@ namespace
 
         Camera.offset = {.x = static_cast<float>(WindowWidth) / 2.f, .y = static_cast<float>(WindowHeight) / 2.f};
         Camera.zoom = static_cast<float>(GetScreenHeight()) / GamePixelHeight;
+
+        // Init map
+        gameState = GameState{};
+        gameState.tileMap.Init();
+        
+        assert(true);
     }
 
     void Shutdown()
@@ -87,42 +142,36 @@ namespace
 
     void HandleInput()
     {
-        MousePosition = Vector2Divide(Vector2Subtract(GetMousePosition(), Camera.offset),
-                                      Vector2{Camera.zoom, Camera.zoom});
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+        {
+            const MapTile current{PixelToHex(MousePosition)};
+            gameState.tileMap.SetValid(current.row, current.col);
+        }
     }
 
     void UpdateGame()
     {
+        MousePosition = Vector2Divide(Vector2Subtract(GetMousePosition(), Camera.offset),
+                                      Vector2{.x = Camera.zoom, .y = Camera.zoom});
     }
 
     void DrawFrame()
     {
-        //frameCounter++;
-        //----------------------------------------------------------------------------------
-
-        // Draw
-        //----------------------------------------------------------------------------------
-        // Render game screen to a texture, 
-        // it could be useful for scaling or further shader postprocessing
-        //BeginTextureMode(renderTexture);
-
         BeginDrawing();
         ClearBackground(BLACK);
 
         BeginMode2D(Camera);
 
-        // TODO: Draw your game screen here
-
-        const hexagon::Hex current{hexagon::PixelToHex(MousePosition)};
-        for (const auto row : std::views::iota(-3, 4))
+        const MapTile current{PixelToHex(MousePosition)};
+        for (int row : MapTiles::iterator)
         {
-            for (const auto col : std::views::iota(-3, 4))
+            for (int col : MapTiles::iterator)
             {
-                auto pos{hexagon::HexToPixel(row, col)};
+                auto pos{HexToPixel(row, col)};
                 const auto str{std::format("{}, {}", row, col)};
 
-                pos.x -= hexagon::Size;
-                pos.y -= hexagon::Size;
+                pos.x -= static_cast<float>(hexagon::Size);
+                pos.y -= static_cast<float>(hexagon::Size);
 
                 auto color = WHITE;
                 // origin
@@ -133,14 +182,19 @@ namespace
 
                 if (row == current.row && col == current.col)
                 {
-                    color = GREEN;
+                    color = current.isValid ? GREEN : GRAY;
+                    DrawTextureEx(Hexagon, pos, 0.f, 1.0f, color);
                 }
 
-                DrawTextureEx(Hexagon, pos, 0.f, 1.0f, color);
+                if (gameState.tileMap.map[row + MapTiles::offset][col+ MapTiles::offset].isValid)
+                {
+                    DrawTextureEx(Hexagon, pos, 0.f, 1.0f, color);
+                }
             }
         }
+        DrawFPS(-GamePixelHeight / 2, -GamePixelHeight / 2);
         DrawText(std::format("Mouse X{}, Y{}", MousePosition.x, MousePosition.y).c_str(),
-                 -GamePixelHeight / 2, -GamePixelHeight / 2, 8, BLUE);
+                 -GamePixelHeight / 2, 16 - GamePixelHeight / 2, 8, BLUE);
 
         EndMode2D();
 
