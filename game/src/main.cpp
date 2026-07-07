@@ -7,19 +7,26 @@
 #endif
 
 #include <raylib.h>
+#include <raymath.h>
 
 namespace hexagon
 {
     // Flat top orientation
 
+    struct Hex
+    {
+        int row;
+        int col;
+    };
+
     // Measurements
     constexpr auto Size{8.0};
-    constexpr auto Width{2.0 * Size};
-    constexpr auto Height{std::numbers::sqrt3 * Size};
+    [[maybe_unused]] constexpr auto Width{2.0 * Size};
+    [[maybe_unused]] constexpr auto Height{std::numbers::sqrt3 * Size};
 
     // Distances
-    constexpr auto Horizontal{Width * 0.75};
-    constexpr auto Vertical{Height};
+    [[maybe_unused]] constexpr auto Horizontal{Width * 0.75};
+    [[maybe_unused]] constexpr auto Vertical{Height};
 
     static Vector2 HexToPixel(const int row, const int column)
     {
@@ -31,42 +38,43 @@ namespace hexagon
             .x = static_cast<float>(x * Size),
             .y = static_cast<float>(y * Size)
         };
-        return result; 
+        return result;
     }
 
-    // constexpr Vector2 Points[] = {
-    //     Vector2{.x = static_cast<float>(Width / 2.0), .y = Height},
-    //     Vector2{.x = static_cast<float>(Width), .y = Height * 0.75},
-    //     Vector2{.x = static_cast<float>(Width), .y = Height * 0.25},
-    //     Vector2{.x = static_cast<float>(Width / 2), .y = 0},
-    //     Vector2{.x = 0, .y = Height * 0.25},
-    //     Vector2{.x = 0, .y = Height * 0.75},
-    // };
+    Hex PixelToHex(const Vector2 point)
+    {
+        const auto x{point.x / Size};
+        const auto y{point.y / Size};
+        const auto col{2.0 / 3 * x};
+        const auto row{-1.0 / 3 * x + std::numbers::sqrt3 / 3 * y};
+        const auto result = Hex{.row = static_cast<int>(row), .col = static_cast<int>(col)};
+        return result;
+    }
 }
 
 namespace
 {
     constexpr auto WindowWidth{720};
     constexpr auto WindowHeight{720};
-    constexpr auto TargetFps{60};
+    constexpr auto TargetFps{120};
     constexpr auto GamePixelHeight{180};
 
-    Camera2D camera{};
-
-    Texture2D hexagon;
+    Camera2D Camera{};
+    Texture2D Hexagon;
+    Vector2 MousePosition{};
 
     void Init()
     {
 #ifndef _DEBUG
         SetTraceLogLevel(LOG_NONE); // Disable raylib trace log messages
 #endif
-        InitWindow(WindowWidth, WindowHeight, "raylib gamejam template");
+        InitWindow(WindowWidth, WindowHeight, "");
         SetTargetFPS(TargetFps);
 
-        hexagon = LoadTexture("assets/textures/flathex.png");
+        Hexagon = LoadTexture("assets/textures/flathex.png");
 
-        camera.offset = {.x = static_cast<float>(WindowWidth) / 2.f, .y = static_cast<float>(WindowHeight) / 2.f};
-        camera.zoom = static_cast<float>(GetScreenHeight()) / GamePixelHeight;
+        Camera.offset = {.x = static_cast<float>(WindowWidth) / 2.f, .y = static_cast<float>(WindowHeight) / 2.f};
+        Camera.zoom = static_cast<float>(GetScreenHeight()) / GamePixelHeight;
     }
 
     void Shutdown()
@@ -76,6 +84,7 @@ namespace
 
     void HandleInput()
     {
+        MousePosition = Vector2Divide(Vector2Subtract(GetMousePosition(), Camera.offset), Vector2{Camera.zoom, Camera.zoom});
     }
 
     void UpdateGame()
@@ -96,21 +105,31 @@ namespace
         BeginDrawing();
         ClearBackground(BLACK);
 
-        BeginMode2D(camera);
-        
+        BeginMode2D(Camera);
+
         // TODO: Draw your game screen here
 
+        const hexagon::Hex current{hexagon::PixelToHex(MousePosition)};
         for (const auto row : std::views::iota(-5, 5))
         {
             for (const auto col : std::views::iota(-5, 5))
             {
                 const auto pos{hexagon::HexToPixel(row, col)};
                 const auto str{std::format("{}, {}", row, col)};
-                DrawTextureEx(hexagon, pos, 0.f, 1.0f, WHITE);
-                //DrawText(str.c_str(), static_cast<int>(pos.x), static_cast<int>(pos.y), 1, RED);
+
+                auto color = WHITE;
+                if (row == current.row && col == current.col)
+                {
+                    color = GREEN;
+                }
+
+                DrawTextureEx(Hexagon, pos, 0.f, 1.0f, color);
             }
         }
 
+        DrawCircle(static_cast<int>(MousePosition.x), static_cast<int>(MousePosition.y), 2, RED);
+        DrawText(std::format("Mouse X{}, Y{}", MousePosition.x, MousePosition.y).c_str(), 0,0, 8, WHITE);
+        
         EndMode2D();
 
         // TODO: Draw everything that requires to be drawn at this point, maybe UI?
@@ -130,8 +149,7 @@ int main()
 {
     Init();
 #ifdef PLATFORM_WEB
-    constexpr auto GameUpdateRateWEB{60};
-    emscripten_set_main_loop(Run, GameUpdateRateWEB, 1);
+    emscripten_set_main_loop(Run, TargetFps, 1);
 #else
     while (!WindowShouldClose())
     {
