@@ -26,7 +26,7 @@ struct GameMemory
 {
     // Level data
     MapTiles tileMap;
-    
+
     Camera2D camera{};
     Texture2D hexagon;
     Vector2 mousePosition{};
@@ -65,6 +65,9 @@ namespace
     constexpr auto TargetFps{120};
     constexpr auto GamePixelHeight{180};
 
+    constexpr auto MinCameraZoom{2.0f};
+    constexpr auto MaxCameraZoom{8.0f};
+
     std::unique_ptr<GameMemory> GameMem;
 
     void Init()
@@ -76,7 +79,7 @@ namespace
         SetTargetFPS(TargetFps);
 
         GameMem = std::make_unique<GameMemory>();
-        
+
         GameMem->hexagon = LoadTexture("assets/textures/flathex.png");
 
         GameMem->camera.offset = {
@@ -101,29 +104,28 @@ namespace
             const MapTile current{PixelToHex(GameMem->mousePosition)};
             GameMem->tileMap.SetValid(current.row, current.col);
         }
-        if (const auto delta{GetMouseWheelMove()})
+
+        const auto delta{GetMouseWheelMove()};
+
+        const auto newZoom{GameMem->camera.zoom + delta};
+        if (newZoom < MinCameraZoom)
         {
-            const auto newZoom{GameMem->camera.zoom + delta};
-            
-            if (newZoom < 2.0f)
-            {
-                GameMem->camera.zoom = 2.0f;
-            }
-            else if (newZoom > 8.0f)
-            {
-                GameMem->camera.zoom = 8.0f;
-            }
-            else
-            {
-                GameMem->camera.zoom = newZoom;
-            }
+            GameMem->camera.zoom = MinCameraZoom;
+        }
+        else if (newZoom > MaxCameraZoom)
+        {
+            GameMem->camera.zoom = MaxCameraZoom;
+        }
+        else
+        {
+            GameMem->camera.zoom = newZoom;
         }
     }
 
     void UpdateGame()
     {
         GameMem->mousePosition = Vector2Divide(Vector2Subtract(GetMousePosition(), GameMem->camera.offset),
-                                                Vector2{.x = GameMem->camera.zoom, .y = GameMem->camera.zoom});
+                                               Vector2{.x = GameMem->camera.zoom, .y = GameMem->camera.zoom});
     }
 
     void DrawFrame()
@@ -139,23 +141,16 @@ namespace
             for (const int col : MapTiles::iterator)
             {
                 auto pos{HexToPixel(row, col)};
-        
+
                 pos.x -= static_cast<float>(hexagon::Size);
                 pos.y -= static_cast<float>(hexagon::Size);
-        
+
                 auto color = WHITE;
-                // origin
-                if (row == 0 && col == 0)
-                {
-                    color = YELLOW;
-                }
-        
                 if (row == current.row && col == current.col)
                 {
                     color = GameMem->tileMap.At(row, col).isValid ? RED : GREEN;
                     DrawTextureEx(GameMem->hexagon, pos, 0.f, 1.0f, color);
                 }
-        
                 if (GameMem->tileMap.At(row, col).isValid)
                 {
                     DrawTextureEx(GameMem->hexagon, pos, 0.f, 1.0f, color);
