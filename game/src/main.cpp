@@ -1,5 +1,7 @@
 #include "pch.h"
 
+#include <charconv>
+#include <ios>
 #include <ranges>
 
 #ifdef PLATFORM_WEB
@@ -13,12 +15,22 @@ namespace hexagon
     // Pointy top orientation
 
     // Measurements
-    constexpr auto Size{32};
-    constexpr auto Width{std::numbers::sqrt3 * Size};
+    constexpr auto Size{8};
+    constexpr auto Width{static_cast<int>(std::numbers::sqrt3 * Size)};
     constexpr auto Height{2 * Size};
     // Distances
     constexpr auto Horizontal{static_cast<int>(Width)};
     constexpr auto Vertical{static_cast<int>(Height * 0.75)};
+
+    Vector2 HexToPixel(const int row, const int column)
+    {
+        const auto even{row % 2 == 1};
+        const auto x = std::numbers::sqrt3 * (column + (even ? 0.5 : 0.0));
+        const auto y = (3.0 / 2 * row);
+        // scale cartesian coordinates
+        const auto result{Vector2{static_cast<float>(x * Size), static_cast<float>(y * Size)}};
+        return result;
+    }
 
     constexpr Vector2 Points[] = {
         Vector2{.x = static_cast<float>(Width / 2.0), .y = Height},
@@ -35,6 +47,11 @@ namespace
     constexpr auto WindowWidth{720};
     constexpr auto WindowHeight{720};
     constexpr auto TargetFps{60};
+    constexpr auto GamePixelHeight{180};
+
+    Camera2D camera{};
+
+    Texture2D hexagon;
 
     RenderTexture2D renderTexture;
 
@@ -46,8 +63,12 @@ namespace
         InitWindow(WindowWidth, WindowHeight, "raylib gamejam template");
         SetTargetFPS(TargetFps);
 
+        hexagon = LoadTexture("assets/textures/hex.png");
+
+        camera.zoom = static_cast<float>(GetScreenHeight()) / GamePixelHeight;
+
         renderTexture = LoadRenderTexture(WindowWidth, WindowHeight);
-        SetTextureFilter(renderTexture.texture, TEXTURE_FILTER_BILINEAR);
+        SetTextureFilter(renderTexture.texture, TEXTURE_FILTER_POINT);
     }
 
     void Shutdown()
@@ -77,38 +98,34 @@ namespace
         ClearBackground(SKYBLUE);
 
         // TODO: Draw your game screen here
-        DrawText("HEXAGONS", 10, 10, 20, DARKGRAY);
 
-        const auto drawHexgon = [](const int centerX, const int centerY, const Color color)
+        // const auto drawHexgon = [](const int centerX, const int centerY, const Color color)
+        // {
+        //     for (size_t startIndex = 0; startIndex < std::size(hexagon::Points); ++startIndex)
+        //     {
+        //         size_t endIndex = {startIndex + 1};
+        //         if (startIndex + 1 >= std::size(hexagon::Points))
+        //         {
+        //             endIndex = 0;
+        //         }
+        //         const auto& [startX, startY] = hexagon::Points[startIndex];
+        //         const auto& [endX, endY] = hexagon::Points[endIndex];
+        //
+        //         DrawLine(centerX + static_cast<int>(startX), centerY + static_cast<int>(startY),
+        //                  centerX + static_cast<int>(endX), centerY + static_cast<int>(endY),
+        //                  color);
+        //     }
+        // };
+
+        for (const auto row : std::views::iota(0, 12))
         {
-            for (size_t startIndex = 0; startIndex < std::size(hexagon::Points); ++startIndex)
+            for (const auto col : std::views::iota(0, 14))
             {
-                size_t endIndex = {startIndex + 1};
-                if (startIndex + 1 >= std::size(hexagon::Points))
-                {
-                    endIndex = 0;
-                }
-                const auto& [startX, startY] = hexagon::Points[startIndex];
-                const auto& [endX, endY] = hexagon::Points[endIndex];
-
-                DrawLine(centerX + static_cast<int>(startX), centerY + static_cast<int>(startY),
-                         centerX + static_cast<int>(endX), centerY + static_cast<int>(endY), 
-                         color);
-            }
-        };
-
-        for (const auto col : std::views::iota(0, 10))
-        {
-            for (const auto row : std::views::iota(0, 10))
-            {
-                const auto evenRow{col % 2 == 0};
-                const auto horiz = hexagon::Horizontal * row;
-                const auto vert = hexagon::Vertical * col;
-                // Shoves odd rows right
-                const auto offset{evenRow ? hexagon::Horizontal / 2 : 0};
-                drawHexgon(100 + horiz + offset, 100 + vert, RED);
+                DrawTextureEx(hexagon, hexagon::HexToPixel(row, col), 0.f, 1.0f, WHITE);
             }
         }
+
+        DrawText("HEXAGONS", 10, 10, 10, DARKGRAY);
 
         //
         EndTextureMode();
@@ -116,6 +133,8 @@ namespace
         // Render to screen (main framebuffer)
         BeginDrawing();
         ClearBackground(RAYWHITE);
+
+        BeginMode2D(camera);
 
         // Draw render texture to screen, scaled if required
         const auto source{
@@ -136,6 +155,8 @@ namespace
         constexpr auto origin{Vector2{.x = 0, .y = 0}};
         constexpr auto rotation{0.0f};
         DrawTexturePro(renderTexture.texture, source, dest, origin, rotation, WHITE);
+
+        EndMode2D();
 
         // TODO: Draw everything that requires to be drawn at this point, maybe UI?
         EndDrawing();
