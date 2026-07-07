@@ -1,7 +1,5 @@
 #include "pch.h"
 
-#include <format>
-
 #ifdef PLATFORM_WEB
 #include <emscripten/emscripten.h>      // Emscripten library
 #endif
@@ -9,50 +7,55 @@
 #include <raylib.h>
 #include <raymath.h>
 
+#include "tilemap.h"
+
 namespace hexagon
 {
     // Flat top orientation
-
-    struct Hex
-    {
-        int row;
-        int col;
-    };
-
     // Measurements
     constexpr auto Size{8.0};
-    [[maybe_unused]] constexpr auto Width{2.0 * Size};
-    [[maybe_unused]] constexpr auto Height{std::numbers::sqrt3 * Size};
+    // [[maybe_unused]] constexpr auto Width{2.0 * Size};
+    // [[maybe_unused]] constexpr auto Height{std::numbers::sqrt3 * Size};
 
     // Distances
-    [[maybe_unused]] constexpr auto Horizontal{Width * 0.75};
-    [[maybe_unused]] constexpr auto Vertical{Height};
+    // [[maybe_unused]] constexpr auto Horizontal{Width * 0.75};
+    // [[maybe_unused]] constexpr auto Vertical{Height};
+}
 
-    static Vector2 HexToPixel(const int row, const int column)
-    {
-        // Hex to cartesian
-        const auto x{3.0 / 2 * static_cast<double>(column)};
-        const auto y{std::numbers::sqrt3 / 2.0 * column + std::numbers::sqrt3 * row};
-        // Scale cartesian coordinates
-        const auto result = Vector2{
-            .x = static_cast<float>(x * Size),
-            .y = static_cast<float>(y * Size)
-        };
-        return result;
-    }
+struct GameMemory
+{
+    // Level data
+    MapTiles tileMap;
 
-    static Hex PixelToHex(const Vector2 point)
-    {
-        const auto x{point.x / Size};
-        const auto y{point.y / Size};
-        const auto col{2.0 / 3 * x};
-        const auto row{-1.0 / 3 * x + std::numbers::sqrt3 / 3 * y};
-        const auto result = Hex{
-            .row = static_cast<int>(std::round(row)),
-            .col = static_cast<int>(std::round(col))
-        };
-        return result;
-    }
+    Camera2D camera{};
+    Texture2D hexagon;
+    Vector2 mousePosition{};
+};
+
+static Vector2 HexToPixel(const int row, const int column)
+{
+    // Hex to cartesian
+    const auto x{3.0 / 2 * static_cast<double>(column)};
+    const auto y{std::numbers::sqrt3 / 2.0 * column + std::numbers::sqrt3 * row};
+    // Scale cartesian coordinates
+    const auto result = Vector2{
+        .x = static_cast<float>(x * hexagon::Size),
+        .y = static_cast<float>(y * hexagon::Size)
+    };
+    return result;
+}
+
+static MapTile PixelToHex(const Vector2 point)
+{
+    const auto x{point.x / hexagon::Size};
+    const auto y{point.y / hexagon::Size};
+    const auto col{2.0 / 3 * x};
+    const auto row{-1.0 / 3 * x + std::numbers::sqrt3 / 3 * y};
+    const auto result = MapTile{
+        .row = static_cast<int>(std::round(row)),
+        .col = static_cast<int>(std::round(col))
+    };
+    return result;
 }
 
 namespace
@@ -62,9 +65,10 @@ namespace
     constexpr auto TargetFps{120};
     constexpr auto GamePixelHeight{180};
 
-    Camera2D Camera{};
-    Texture2D Hexagon;
-    Vector2 MousePosition{};
+    constexpr auto MinCameraZoom{2.0f};
+    constexpr auto MaxCameraZoom{8.0f};
+
+    std::unique_ptr<GameMemory> GameMem;
 
     void Init()
     {
@@ -75,11 +79,19 @@ namespace
         SetTargetFPS(TargetFps);
 
 
-        Hexagon = LoadTexture("assets/textures/flathex.png");
+        GameMem = std::make_unique<GameMemory>();
 
+        GameMem->hexagon = LoadTexture("assets/textures/flathex.png");
 
-        Camera.offset = {.x = static_cast<float>(WindowWidth) / 2.f, .y = static_cast<float>(WindowHeight) / 2.f};
-        Camera.zoom = static_cast<float>(GetScreenHeight()) / GamePixelHeight;
+        GameMem->camera.offset = {
+            .x = static_cast<float>(WindowWidth) / 2.f,
+            .y = static_cast<float>(WindowHeight) / 2.f
+        };
+        GameMem->camera.zoom = static_cast<float>(GetScreenHeight()) / GamePixelHeight;
+
+        // Init map
+        GameMem->tileMap.Init();
+
     }
 
     void Shutdown()
@@ -89,64 +101,72 @@ namespace
 
     void HandleInput()
     {
-        MousePosition = Vector2Divide(Vector2Subtract(GetMousePosition(), Camera.offset),
-                                      Vector2{Camera.zoom, Camera.zoom});
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+        {
+            const MapTile current{PixelToHex(GameMem->mousePosition)};
+            GameMem->tileMap.SetValid(current.row, current.col);
+        }
+
+        const auto delta{GetMouseWheelMove()};
+
+        const auto newZoom{GameMem->camera.zoom + delta};
+        if (newZoom < MinCameraZoom)
+        {
+            GameMem->camera.zoom = MinCameraZoom;
+        }
+        else if (newZoom > MaxCameraZoom)
+        {
+            GameMem->camera.zoom = MaxCameraZoom;
+        }
+        else
+        {
+            GameMem->camera.zoom = newZoom;
+        }
     }
 
     void UpdateGame()
     {
+        GameMem->mousePosition = Vector2Divide(Vector2Subtract(GetMousePosition(), GameMem->camera.offset),
+                                               Vector2{.x = GameMem->camera.zoom, .y = GameMem->camera.zoom});
     }
 
     void DrawFrame()
     {
-        //frameCounter++;
-        //----------------------------------------------------------------------------------
-
-        // Draw
-        //----------------------------------------------------------------------------------
-        // Render game screen to a texture, 
-        // it could be useful for scaling or further shader postprocessing
-        //BeginTextureMode(renderTexture);
-
         BeginDrawing();
         ClearBackground(BLACK);
 
-        BeginMode2D(Camera);
+        BeginMode2D(GameMem->camera);
 
-        // TODO: Draw your game screen here
-
-        const hexagon::Hex current{hexagon::PixelToHex(MousePosition)};
-        for (const auto row : std::views::iota(-3, 4))
+        const MapTile current{PixelToHex(GameMem->mousePosition)};
+        for (const int row : MapTiles::iterator)
         {
-            for (const auto col : std::views::iota(-3, 4))
+            for (const int col : MapTiles::iterator)
             {
-                auto pos{hexagon::HexToPixel(row, col)};
-                const auto str{std::format("{}, {}", row, col)};
+                auto pos{HexToPixel(row, col)};
 
-                pos.x -= hexagon::Size;
-                pos.y -= hexagon::Size;
+                pos.x -= static_cast<float>(hexagon::Size);
+                pos.y -= static_cast<float>(hexagon::Size);
 
                 auto color = WHITE;
-                // origin
-                if (row == 0 && col == 0)
-                {
-                    color = YELLOW;
-                }
-
                 if (row == current.row && col == current.col)
                 {
-                    color = GREEN;
+                    color = GameMem->tileMap.At(row, col).isValid ? RED : GREEN;
+                    DrawTextureEx(GameMem->hexagon, pos, 0.f, 1.0f, color);
                 }
-
-                DrawTextureEx(Hexagon, pos, 0.f, 1.0f, color);
+                if (GameMem->tileMap.At(row, col).isValid)
+                {
+                    DrawTextureEx(GameMem->hexagon, pos, 0.f, 1.0f, color);
+                }
             }
         }
-        DrawText(std::format("Mouse X{}, Y{}", MousePosition.x, MousePosition.y).c_str(),
-                 -GamePixelHeight / 2, -GamePixelHeight / 2, 8, BLUE);
+        DrawFPS(-GamePixelHeight / 2, -GamePixelHeight / 2);
+        DrawText(std::format("Mouse X{}, Y{}", GameMem->mousePosition.x, GameMem->mousePosition.y).c_str(),
+                 -GamePixelHeight / 2, 16 - GamePixelHeight / 2, 8, BLUE);
 
         EndMode2D();
 
         // TODO: Draw everything that requires to be drawn at this point, maybe UI?
+
         EndDrawing();
     }
 
