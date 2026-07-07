@@ -8,7 +8,7 @@ void MapTiles::Init()
     {
         for (const auto col : iterator)
         {
-            auto& currenTile {m_map.at(row + Offset + (col + Offset) * Width)};
+            auto& currenTile {m_map.at(row + MaxTilesFromCenter + (col + MaxTilesFromCenter) * Width)};
             currenTile = {.row = row, .col = col};
                 
             if (row == 0 && col == 0)
@@ -24,7 +24,7 @@ void MapTiles::Init()
 MapTile& MapTiles::At(const int row, const int col)
 {
     assert(ValidIndex(row, col));
-    return m_map.at(row + Offset + (col + Offset) * Width);
+    return m_map.at(row + MaxTilesFromCenter + (col + MaxTilesFromCenter) * Width);
 }
 
 void MapTiles::SetValid(const int row, const int col)
@@ -40,5 +40,5 @@ void MapTiles::SetValid(const int row, const int col)
 
 bool MapTiles::ValidIndex(const int row, const int col)
 {
-    return (row >= -Offset && row <= Offset && col >= -Offset && col <= Offset);
+    return (row >= -MaxTilesFromCenter && row <= MaxTilesFromCenter && col >= -MaxTilesFromCenter && col <= MaxTilesFromCenter);
 }

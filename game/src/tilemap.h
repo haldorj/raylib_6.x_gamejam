@@ -1,8 +1,8 @@
 ﻿#pragma once
 
-constexpr auto Offset{10};
-constexpr auto Width{Offset * 2 + 1};
-constexpr auto Height{Offset * 2 + 1};
+constexpr auto MaxTilesFromCenter{10};
+constexpr auto Width{MaxTilesFromCenter * 2 + 1}; // +1 for center tile
+constexpr auto Height{MaxTilesFromCenter * 2 + 1}; // +1 for center tile
 constexpr auto MapSize{static_cast<size_t>(Width * Height * 2)};
 
 struct MapTile
@@ -21,7 +21,7 @@ public:
     MapTile& At(int row, int col);
     void SetValid(int row, int col);
 
-    static constexpr auto iterator{std::views::iota(-Offset, Offset)};
+    static constexpr auto iterator{std::views::iota(-MaxTilesFromCenter, MaxTilesFromCenter)};
     
 private:
     static bool ValidIndex(int row, int col);
