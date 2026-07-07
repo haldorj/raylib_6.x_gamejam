@@ -1,8 +1,9 @@
 ﻿#pragma once
 
-constexpr int Offset{10};
-constexpr int Width{Offset * 2 + 1};
-constexpr int Height{Offset * 2 + 1};
+constexpr auto Offset{10};
+constexpr auto Width{Offset * 2 + 1};
+constexpr auto Height{Offset * 2 + 1};
+constexpr auto MapSize{static_cast<size_t>(Width * Height * 2)};
 
 struct MapTile
 {
@@ -25,5 +26,5 @@ public:
 private:
     static bool ValidIndex(int row, int col);
     
-    MapTile m_map[Width][Height] = {};
+    std::array<MapTile, MapSize> m_map = {};
 };

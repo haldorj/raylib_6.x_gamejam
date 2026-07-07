@@ -9,18 +9,28 @@
 
 #include "tilemap.h"
 
-namespace hexagon
+enum class Mode : uint8_t
 {
-    // Flat top orientation
-    // Measurements
-    constexpr auto Size{8.0};
-    // [[maybe_unused]] constexpr auto Width{2.0 * Size};
-    // [[maybe_unused]] constexpr auto Height{std::numbers::sqrt3 * Size};
+    game,
+    editor,
+};
 
-    // Distances
-    // [[maybe_unused]] constexpr auto Horizontal{Width * 0.75};
-    // [[maybe_unused]] constexpr auto Vertical{Height};
+const char* ToString(const Mode mode)
+{
+    switch (mode)
+    {
+    case Mode::game: return "GAME";
+    case Mode::editor: return "EDITOR";
+    }
+    return "UNKNOWN";
 }
+
+struct Entity
+{
+    // position in grid
+    int col;
+    int row;
+};
 
 struct GameMemory
 {
@@ -28,40 +38,48 @@ struct GameMemory
     MapTiles tileMap;
 
     Camera2D camera{};
-    Texture2D hexagon;
+    Texture2D hexagon{};
     Vector2 mousePosition{};
+
+    Mode currentMode{Mode::game};
 };
 
-static Vector2 HexToPixel(const int row, const int column)
+namespace hexagon
 {
-    // Hex to cartesian
-    const auto x{3.0 / 2 * static_cast<double>(column)};
-    const auto y{std::numbers::sqrt3 / 2.0 * column + std::numbers::sqrt3 * row};
-    // Scale cartesian coordinates
-    const auto result = Vector2{
-        .x = static_cast<float>(x * hexagon::Size),
-        .y = static_cast<float>(y * hexagon::Size)
-    };
-    return result;
-}
-
-static MapTile PixelToHex(const Vector2 point)
-{
-    const auto x{point.x / hexagon::Size};
-    const auto y{point.y / hexagon::Size};
-    const auto col{2.0 / 3 * x};
-    const auto row{-1.0 / 3 * x + std::numbers::sqrt3 / 3 * y};
-    const auto result = MapTile{
-        .row = static_cast<int>(std::round(row)),
-        .col = static_cast<int>(std::round(col))
-    };
-    return result;
+    constexpr auto Size{8.0};
 }
 
 namespace
 {
+    Vector2 HexToPixel(const int row, const int column)
+    {
+        // Hex to cartesian
+        const auto x{3.0 / 2 * static_cast<double>(column)};
+        const auto y{std::numbers::sqrt3 / 2.0 * column + std::numbers::sqrt3 * row};
+        // Scale cartesian coordinates
+        const auto result = Vector2{
+            .x = static_cast<float>(x * hexagon::Size),
+            .y = static_cast<float>(y * hexagon::Size)
+        };
+        return result;
+    }
+
+    MapTile PixelToHex(const Vector2 point)
+    {
+        const auto x{point.x / hexagon::Size};
+        const auto y{point.y / hexagon::Size};
+        const auto col{2.0 / 3 * x};
+        const auto row{-1.0 / 3 * x + std::numbers::sqrt3 / 3 * y};
+        const auto result = MapTile{
+            .row = static_cast<int>(std::round(row)),
+            .col = static_cast<int>(std::round(col))
+        };
+        return result;
+    }
+
     constexpr auto WindowWidth{720};
     constexpr auto WindowHeight{720};
+
     constexpr auto TargetFps{120};
     constexpr auto GamePixelHeight{180};
 
@@ -101,9 +119,41 @@ namespace
     {
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
         {
-            const MapTile current{PixelToHex(GameMem->mousePosition)};
-            GameMem->tileMap.SetValid(current.row, current.col);
+            switch (GameMem->currentMode)
+            {
+            case Mode::game:
+                {
+                }
+                break;
+            case Mode::editor:
+                {
+                    const MapTile current{PixelToHex(GameMem->mousePosition)};
+                    GameMem->tileMap.SetValid(current.row, current.col);
+                }
+                break;
+            }
         }
+        
+        if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT))
+        {
+            const auto delta{GetMouseDelta()};
+            GameMem->camera.offset = Vector2Add(GameMem->camera.offset, delta);
+        }
+
+#ifdef _DEBUG
+        if (IsKeyPressed(KEY_F2))
+        {
+            switch (GameMem->currentMode)
+            {
+            case Mode::game:
+                GameMem->currentMode = Mode::editor;
+                break;
+            case Mode::editor:
+                GameMem->currentMode = Mode::game;
+                break;
+            }
+        }
+#endif
 
         const auto delta{GetMouseWheelMove()};
 
@@ -131,8 +181,8 @@ namespace
     void DrawFrame()
     {
         BeginDrawing();
-        ClearBackground(BLACK);
 
+        ClearBackground(BLACK);
         BeginMode2D(GameMem->camera);
 
         const MapTile current{PixelToHex(GameMem->mousePosition)};
@@ -154,13 +204,16 @@ namespace
                 if (GameMem->tileMap.At(row, col).isValid)
                 {
                     DrawTextureEx(GameMem->hexagon, pos, 0.f, 1.0f, color);
+                    //DrawText(std::format("R{}, Q{}", row, col).c_str(), static_cast<int>(pos.x), static_cast<int>(pos.y), 1, GREEN);
                 }
             }
         }
         DrawFPS(-GamePixelHeight / 2, -GamePixelHeight / 2);
         DrawText(std::format("Mouse X{}, Y{}", GameMem->mousePosition.x, GameMem->mousePosition.y).c_str(),
                  -GamePixelHeight / 2, 16 - GamePixelHeight / 2, 8, BLUE);
-
+        DrawText(ToString(GameMem->currentMode),
+                 -GamePixelHeight / 2, 24 - GamePixelHeight / 2, 8, BLUE);
+        
         EndMode2D();
 
         // TODO: Draw everything that requires to be drawn at this point, maybe UI?

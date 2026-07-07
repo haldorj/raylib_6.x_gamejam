@@ -8,7 +8,7 @@ void MapTiles::Init()
     {
         for (const auto col : iterator)
         {
-            auto& currenTile {m_map[row + Offset][col + Offset]};
+            auto& currenTile {m_map.at(row + Offset + (col + Offset) * Width)};
             currenTile = {.row = row, .col = col};
                 
             if (row == 0 && col == 0)
@@ -24,7 +24,7 @@ void MapTiles::Init()
 MapTile& MapTiles::At(const int row, const int col)
 {
     assert(ValidIndex(row, col));
-    return m_map[row + Offset][col + Offset];
+    return m_map.at(row + Offset + (col + Offset) * Width);
 }
 
 void MapTiles::SetValid(const int row, const int col)
@@ -34,7 +34,7 @@ void MapTiles::SetValid(const int row, const int col)
         return;
     }
 
-    auto& currenTile {m_map[row + Offset][col + Offset]};
+    auto& currenTile {At(row, col)};
     currenTile.isValid = !currenTile.isValid;
 }
 
