@@ -74,15 +74,9 @@ namespace
         InitWindow(WindowWidth, WindowHeight, "");
         SetTargetFPS(TargetFps);
 
-<<<<<<< HEAD
-        hexagon = LoadTexture("assets/textures/flathex.png");
-        //hexagon = LoadTexture("assets/textures/Object/explosive directional.png");
-        //hexagon = LoadTexture("assets/textures/Object/explosive.png");
-       // hexagon = LoadTexture("assets/textures/Object/Sprite-0003.png");
 
-=======
         Hexagon = LoadTexture("assets/textures/flathex.png");
->>>>>>> 2e381a7b15d88c8d22040ebe80cd5d10bcd7b64c
+
 
         Camera.offset = {.x = static_cast<float>(WindowWidth) / 2.f, .y = static_cast<float>(WindowHeight) / 2.f};
         Camera.zoom = static_cast<float>(GetScreenHeight()) / GamePixelHeight;
