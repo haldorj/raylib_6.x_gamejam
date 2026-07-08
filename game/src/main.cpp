@@ -18,14 +18,17 @@ struct GameMemory
 {
     Level level;
 
+
     // UI ELEMENTS
     std::vector<UI::Button> buttons;
 
     Music music{};
+    
     Camera2D cameraGame{};
     Camera2D cameraUI{};
     Texture2D hexagon{};
     Vector2 mousePosition{};
+    Sound fxButton {};
 
     Mode currentMode{Mode::game};
 };
@@ -97,7 +100,8 @@ namespace
         Game->cameraUI.zoom = static_cast<float>(GetScreenHeight()) / GamePixelHeight;
 
         Game->music = LoadMusicStream("assets/Music/Goblins_Dance_(Battle).wav");
-
+        Game->fxButton = LoadSound("assets/Sound effects/UI sounds/menu_blip.wav");
+        
         // float timePlayed = 0.0f; // Time played normalized [0.0f..1.0f]
         constexpr float pan = 0.0f; // Default audio pan center [-1.0f..1.0f]
         SetMusicPan(Game->music, pan);
@@ -124,6 +128,7 @@ namespace
             {
                 if (::UI::IsButtonHovered(button))
                 {
+                    PlaySound(Game->fxButton);
                     button.onPressed();
                 }
             }
