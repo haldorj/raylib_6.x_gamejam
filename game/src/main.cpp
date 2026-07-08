@@ -26,6 +26,7 @@ struct GameMemory
     Vector2 mousePosition{};
 
     Mode currentMode{Mode::game};
+    Music music{};
 };
 
 namespace
@@ -87,6 +88,13 @@ namespace
         InitWindow(WindowWidth, WindowHeight, "");
         SetTargetFPS(TargetFps);
 
+        InitAudioDevice();
+
+
+       // float timePlayed = 0.0f;        // Time played normalized [0.0f..1.0f]
+        float pan = 0.0f;               // Default audio pan center [-1.0f..1.0f]
+
+
         GameMem = std::make_unique<GameMemory>();
 
         GameMem->hexagon = LoadTexture("assets/textures/flathex.png");
@@ -97,9 +105,15 @@ namespace
         };
         GameMem->cameraGame.zoom = static_cast<float>(GetScreenHeight()) / GamePixelHeight;
         GameMem->cameraUI.zoom = static_cast<float>(GetScreenHeight()) / GamePixelHeight;
+        
+        GameMem->music = LoadMusicStream("assets/Music/Goblins_Dance_(Battle).wav");
+
+        SetMusicPan(GameMem->music, pan);
 
         // Init map
         GameMem->tileMap.Init();
+        PlayMusicStream(GameMem->music);
+
     }
 
     void Shutdown()
@@ -167,7 +181,10 @@ namespace
     void UpdateGame()
     {
         GameMem->mousePosition = Vector2Divide(Vector2Subtract(GetMousePosition(), GameMem->cameraGame.offset),
-                                               Vector2{.x = GameMem->cameraGame.zoom, .y = GameMem->cameraGame.zoom});
+        Vector2{.x = GameMem->cameraGame.zoom, .y = GameMem->cameraGame.zoom});
+
+        UpdateMusicStream(GameMem->music);   // Update music buffer with new stream data
+
     }
 
     void DrawGame()
