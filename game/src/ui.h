@@ -3,13 +3,24 @@
 namespace UI
 {
     // button /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    enum class ButtonType : std::uint8_t
+    {
+        none = 0,
+        addShape,
+        saveShape,
+        // Don't add enums past this one.
+        count // Max Buttons
+    };
     
     struct Button
     {
         std::function<void()> onPressed;
+        std::function<bool()> isVisible;
         Rectangle rect;
-        std::string_view text;
+        std::string text;
         int fontSize{8};
+        ButtonType type;
     };
     
     void RenderButton(const Button& button);
@@ -63,5 +74,13 @@ namespace UI
         .y = LeftSideBar.y,
         .width = LeftSideBar.width,
         .height = 16.f,
+    };
+    
+    // Save shape
+    inline constexpr Rectangle EDITOR_SaveShapeButton{
+        .x = LeftSideBar.x,
+        .y = LeftSideBar.y + 18.f,
+        .width = LeftSideBar.width,
+        .height = EDITOR_AddShapeButton.height,
     };
 }

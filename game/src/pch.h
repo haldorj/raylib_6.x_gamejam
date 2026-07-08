@@ -7,6 +7,8 @@
 #include <memory>
 #include <array>
 #include <functional>
+#include <string>
+#include <string_view>
 
 #ifdef PLATFORM_WEB
 #include <emscripten/emscripten.h>      // Emscripten library

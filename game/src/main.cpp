@@ -6,28 +6,34 @@ enum class Mode : uint8_t
 {
     game,
     editorNormal,
+    editorAddShape,
 };
 
 struct Level
 {
     // Level data
     MapTiles tileMap;
+    std::vector<std::vector<MapTile>> shapes;
+    
+    std::vector<MapTile> tempShape;
 };
 
+constexpr auto MaxButtons{static_cast<size_t>(UI::ButtonType::count)};
 struct GameMemory
 {
     Level level;
-
-
+    
     // UI ELEMENTS
-    std::vector<UI::Button> buttons;
+    std::array<UI::Button, MaxButtons> buttons;
 
     Music music{};
     
     Camera2D cameraGame{};
     Camera2D cameraUI{};
-    Texture2D hexagon{};
     Vector2 mousePosition{};
+    
+    // TODO: make arrays for assets
+    Texture2D hexagon{};
     Sound fxButton {};
 
     Mode currentMode{Mode::game};
@@ -36,6 +42,9 @@ struct GameMemory
 namespace
 {
     std::unique_ptr<GameMemory> Game;
+    const auto visibleEditorOnly = []{ return Game->currentMode != Mode::game; };
+    const auto visibleShapeModeOnly = []{ return Game->currentMode == Mode::editorAddShape; };
+
 #ifndef PLATFORM_WEB
     bool Running;
 #endif
@@ -46,6 +55,7 @@ namespace
         {
         case Mode::game: return "GAME";
         case Mode::editorNormal: return "EDITOR";
+        case Mode::editorAddShape: return "ADD SHAPE";
         }
         return "UNKNOWN";
     }
@@ -109,13 +119,51 @@ namespace
         Game->level.tileMap.Init();
         PlayMusicStream(Game->music);
         
-        // DESKTOP ONLY
+        auto& shapeButton = Game->buttons.at(static_cast<size_t>(UI::ButtonType::addShape));
+        shapeButton.rect = UI::EDITOR_AddShapeButton;
+        shapeButton.text = "Add Shape";
+        shapeButton.type = UI::ButtonType::addShape;
+        shapeButton.onPressed = {
+            []
+            {
+                switch (Game->currentMode)
+                {
+                case Mode::game: break;
+                case Mode::editorNormal:
+                    {
+                        Game->buttons.at(static_cast<size_t>(UI::ButtonType::addShape)).text = "Cancel";
+                        Game->currentMode = Mode::editorAddShape;
+                    }
+                    break;
+                case Mode::editorAddShape:
+                    {
+                        Game->buttons.at(static_cast<size_t>(UI::ButtonType::addShape)).text = "Add Shape";
+                        Game->currentMode = Mode::editorNormal;
+                    }
+                    break;
+                }
+            }
+        };
+        shapeButton.isVisible = visibleEditorOnly;
+        
+        auto& saveShapeButton = Game->buttons.at(static_cast<size_t>(UI::ButtonType::saveShape));
+        saveShapeButton.rect = UI::EDITOR_SaveShapeButton;
+        saveShapeButton.text = "Save";
+        saveShapeButton.onPressed = {
+            []
+            {
+                const auto& tempShape{Game->level.tempShape};
+                if (tempShape.empty())
+                {
+                    return;
+                }
+
+                Game->level.shapes.push_back(tempShape);
+            }
+        };
+        saveShapeButton.isVisible = visibleShapeModeOnly;
+        
 #ifndef PLATFORM_WEB
-        UI::Button quitButton;
-        quitButton.rect = UI::EDITOR_AddShapeButton;
-        quitButton.text = "Quit";
-        quitButton.onPressed = {[] { Running = false; }};
-        Game->buttons.emplace_back(quitButton);
         Running = true;
 #endif
     }
@@ -145,6 +193,8 @@ namespace
                     Game->level.tileMap.SetValid(current.row, current.col);
                 }
                 break;
+            case Mode::editorAddShape:
+                break;
             }
         }
 
@@ -165,6 +215,7 @@ namespace
             case Mode::editorNormal:
                 Game->currentMode = Mode::game;
                 break;
+            default: ;
             }
         }
 #endif
@@ -194,7 +245,7 @@ namespace
         UpdateMusicStream(Game->music); // Update music buffer with new stream data
     }
 
-    void DrawGame()
+    void DrawGameScreen()
     {
         BeginMode2D(Game->cameraGame);
 
@@ -257,7 +308,20 @@ namespace
 
         ClearBackground(BLACK);
 
-        DrawGame();
+        switch (Game->currentMode)
+        {
+        case Mode::game:
+            {
+                DrawGameScreen();
+            }
+            break;
+        case Mode::editorNormal:
+            {
+                DrawGameScreen();
+            }
+            break;
+        }
+
         DrawUI();
 
         EndDrawing();
