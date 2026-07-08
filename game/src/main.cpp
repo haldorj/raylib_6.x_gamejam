@@ -11,12 +11,14 @@ namespace
         editorAddShape,
     };
 
+    using shape = std::vector<MapTile>;
+
     struct Level
     {
         // Level data
-        MapTiles tileMap;
-        MapTiles tempShape;
-        std::vector<std::vector<MapTile>> shapes;
+        MapTiles tileMap; // Main level
+        MapTiles tempShape; // Shape editor level
+        std::vector<std::pair<shape, RenderTexture>> shapes;
     };
 
     constexpr auto MaxButtons{static_cast<size_t>(UI::ButtonType::count)};
@@ -92,6 +94,33 @@ namespace
         CloseWindow();
     }
 
+    RenderTexture GeneratePreviewTexture(const std::span<MapTile> shape)
+    {
+        const RenderTexture renderTexture = LoadRenderTexture(GetScreenHeight(), GetScreenWidth());
+
+        Camera2D previewCamera{};
+        previewCamera.offset = Vector2{
+            .x = static_cast<float>(GetScreenHeight()) / 2.0f,
+            .y = static_cast<float>(GetScreenWidth()) / 2.0f
+        };
+        previewCamera.zoom = 6.0f;
+
+        BeginDrawing();
+        BeginTextureMode(renderTexture);
+        BeginMode2D(previewCamera);
+        ClearBackground(BLACK);
+        for (const auto& hex : shape)
+        {
+            auto pos{HexToPixel(hex.row, hex.col)};
+            pos.x -= static_cast<float>(HexagonSize);
+            pos.y -= static_cast<float>(HexagonSize);
+            DrawTextureEx(Game->hexagon, pos, 0.f, 1.0f, WHITE);
+        }
+        EndTextureMode();
+        EndDrawing();
+        return renderTexture;
+    }
+
     void Init()
     {
 #ifndef _DEBUG
@@ -155,11 +184,31 @@ namespace
         saveShapeButton.onPressed = {
             []
             {
-                if (!Game->level.tempShape.IsEmpty())
+                switch (Game->currentMode)
                 {
-                    Game->level.shapes.emplace_back(Game->level.tempShape.ValidTiles());
+                case Mode::game: break;
+                case Mode::editorNormal:
+                    {
+                        auto& tempShape{Game->level.tempShape};
+                        tempShape.Init();
+                        Game->buttons.at(static_cast<size_t>(UI::ButtonType::addShape)).text = "Cancel";
+                        Game->currentMode = Mode::editorAddShape;
+                    }
+                    break;
+                case Mode::editorAddShape:
+                    {
+                        Game->buttons.at(static_cast<size_t>(UI::ButtonType::addShape)).text = "Add Shape";
+                        Game->currentMode = Mode::editorNormal;
+                    }
+                    break;
                 }
                 
+                if (!Game->level.tempShape.IsEmpty())
+                {
+                    auto newShape{Game->level.tempShape.ValidTiles()};
+                    const auto previewTexture{GeneratePreviewTexture(newShape)};
+                    Game->level.shapes.emplace_back(newShape, previewTexture);
+                }
                 Game->currentMode = Mode::editorNormal;
             }
         };
@@ -250,7 +299,7 @@ namespace
 
         UpdateMusicStream(Game->music); // Update music buffer with new stream data
     }
-    
+
     void DrawMap(MapTiles& map)
     {
         const MapTile current{PixelToHex(Game->mousePosition)};
@@ -259,7 +308,6 @@ namespace
             for (const int col : MapTiles::iterator)
             {
                 auto pos{HexToPixel(row, col)};
-
                 pos.x -= static_cast<float>(HexagonSize);
                 pos.y -= static_cast<float>(HexagonSize);
 
@@ -312,6 +360,25 @@ namespace
         {
             DrawFPS(0, 0);
             textPositionY += 16;
+        }
+        float index{0};
+        for (const auto& tex : Game->level.shapes | std::views::values)
+        {
+            const Rectangle source = {
+                .x = 0,
+                .y = 0,
+                .width = static_cast<float>(tex.texture.width),
+                .height = -static_cast<float>(tex.texture.height)
+            };
+            constexpr auto initialOffset{40.0f};
+            const Rectangle dest = {
+                .x = UI::LeftSideBar.x,
+                .y = UI::LeftSideBar.y + initialOffset + (index * UI::LeftSideBar.width),
+                .width = UI::LeftSideBar.width,
+                .height = UI::LeftSideBar.width,
+            };
+            DrawTexturePro(tex.texture, source, dest, Vector2{.x = 0, .y = 0}, 0.0f,WHITE);
+            index++;
         }
 
         DrawText(std::format("Mode: {}", ToString(Game->currentMode)).c_str(),
