@@ -1,12 +1,5 @@
 #include "pch.h"
-
-#ifdef PLATFORM_WEB
-#include <emscripten/emscripten.h>      // Emscripten library
-#endif
-
-#include <raylib.h>
-#include <raymath.h>
-
+#include "ui.h"
 #include "tilemap.h"
 
 enum class Mode : uint8_t
@@ -19,32 +12,23 @@ struct GameMemory
 {
     // Level data
     MapTiles tileMap;
-
+    Music music{};
     Camera2D cameraGame{};
     Camera2D cameraUI{};
     Texture2D hexagon{};
     Vector2 mousePosition{};
 
+    // UI ELEMENTS
+    std::vector<UI::Button> buttons;
+
     Mode currentMode{Mode::game};
-    Music music{};
 };
 
 namespace
 {
-    constexpr auto WindowWidth{720};
-    constexpr auto WindowHeight{720};
-
-    constexpr auto TargetFps{120};
-    constexpr auto GamePixelHeight{180};
-
-    constexpr auto MinCameraZoom{2.0f};
-    constexpr auto MaxCameraZoom{8.0f};
-
-    constexpr auto HexagonSize{8.0};
-
     std::unique_ptr<GameMemory> GameMem;
 
-    const char* ToString(const Mode mode)
+    constexpr const char* ToString(const Mode mode)
     {
         switch (mode)
         {
@@ -87,33 +71,25 @@ namespace
 #endif
         InitWindow(WindowWidth, WindowHeight, "");
         SetTargetFPS(TargetFps);
-
         InitAudioDevice();
 
-
-       // float timePlayed = 0.0f;        // Time played normalized [0.0f..1.0f]
-        float pan = 0.0f;               // Default audio pan center [-1.0f..1.0f]
-
-
         GameMem = std::make_unique<GameMemory>();
-
         GameMem->hexagon = LoadTexture("assets/textures/flathex.png");
 
-        GameMem->cameraGame.offset = {
-            .x = static_cast<float>(WindowWidth) / 2.f,
-            .y = static_cast<float>(WindowHeight) / 2.f
-        };
+        // Game Camera
+        GameMem->cameraGame.offset = UI::CameraStartPositionRelativeToUI;
+        // UI Camera
         GameMem->cameraGame.zoom = static_cast<float>(GetScreenHeight()) / GamePixelHeight;
         GameMem->cameraUI.zoom = static_cast<float>(GetScreenHeight()) / GamePixelHeight;
-        
+
         GameMem->music = LoadMusicStream("assets/Music/Goblins_Dance_(Battle).wav");
 
+        // float timePlayed = 0.0f; // Time played normalized [0.0f..1.0f]
+        constexpr float pan = 0.0f; // Default audio pan center [-1.0f..1.0f]
         SetMusicPan(GameMem->music, pan);
-
         // Init map
         GameMem->tileMap.Init();
         PlayMusicStream(GameMem->music);
-
     }
 
     void Shutdown()
@@ -125,6 +101,14 @@ namespace
     {
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
         {
+            for (const auto& button : GameMem->buttons)
+            {
+                if (::UI::IsButtonHovered(button))
+                {
+                    button.onPressed();
+                }
+            }
+
             switch (GameMem->currentMode)
             {
             case Mode::game:
@@ -163,8 +147,8 @@ namespace
 
         const auto delta{GetMouseWheelMove()};
 
-        const auto newZoom{GameMem->cameraGame.zoom + delta};
-        if (newZoom < MinCameraZoom)
+        if (const auto newZoom{GameMem->cameraGame.zoom + delta};
+            newZoom < MinCameraZoom)
         {
             GameMem->cameraGame.zoom = MinCameraZoom;
         }
@@ -181,10 +165,9 @@ namespace
     void UpdateGame()
     {
         GameMem->mousePosition = Vector2Divide(Vector2Subtract(GetMousePosition(), GameMem->cameraGame.offset),
-        Vector2{.x = GameMem->cameraGame.zoom, .y = GameMem->cameraGame.zoom});
+                                               Vector2{.x = GameMem->cameraGame.zoom, .y = GameMem->cameraGame.zoom});
 
-        UpdateMusicStream(GameMem->music);   // Update music buffer with new stream data
-
+        UpdateMusicStream(GameMem->music); // Update music buffer with new stream data
     }
 
     void DrawGame()
@@ -222,40 +205,19 @@ namespace
     {
         BeginMode2D(GameMem->cameraUI);
 
-        constexpr auto sideBarWidth{0.8f};
-        constexpr auto sideBarHeight{1.0f - sideBarWidth};
+        DrawRectangleRec(UI::LeftSideBar, GRAY);
+        DrawRectangleRec(UI::BottomSideBar, GRAY);
+        DrawRectangleRec(UI::MergeWindow, DARKGRAY);
 
-        constexpr Rectangle leftSideBar{
-            .x = static_cast<float>(GamePixelHeight) * sideBarWidth,
-            .y = 0.0f,
-            .width = static_cast<float>(GamePixelHeight) * sideBarHeight,
-            .height = static_cast<float>(GamePixelHeight)
-        };
+        auto textPositionY{0};
+        if (GameMem->currentMode == Mode::editor)
+        {
+            DrawFPS(0, 0);
+            textPositionY += 16;
+        }
 
-        constexpr Rectangle bottomSideBar{
-            .x = 0.0f,
-            .y = static_cast<float>(GamePixelHeight) * sideBarWidth,
-            .width = static_cast<float>(GamePixelHeight),
-            .height = static_cast<float>(GamePixelHeight) * sideBarHeight
-        };
-
-        constexpr auto mergeBarWidth{0.225f};
-        constexpr auto mergeBarOffset{1.0f - mergeBarWidth};
-        
-        constexpr Rectangle mergeWindow{
-            .x = static_cast<float>(GamePixelHeight) * mergeBarOffset,
-            .y = static_cast<float>(GamePixelHeight) * mergeBarOffset,
-            .width = static_cast<float>(GamePixelHeight) * mergeBarWidth,
-            .height = static_cast<float>(GamePixelHeight) * mergeBarWidth
-        };
-
-        DrawRectangleRec(leftSideBar, GRAY);
-        DrawRectangleRec(bottomSideBar, GRAY);
-        DrawRectangleRec(mergeWindow, DARKGRAY);
-
-        DrawFPS(0, 0);
         DrawText(std::format("Mode: {}", ToString(GameMem->currentMode)).c_str(),
-                 0, 16, 8, BLUE);
+                 0, textPositionY, 8, BLUE);
 
         EndMode2D();
     }
