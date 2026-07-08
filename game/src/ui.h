@@ -15,6 +15,8 @@ namespace UI
     
     // UI ELEMENTS ////////////////////////////////////////////////////////////////////////////////////////////////////
     
+    // Left sidebar
+    // Displays hex-shapes
     inline constexpr auto LeftSideBarHeight{0.8f};
     inline constexpr auto LeftSideBarWidth{1.0f - LeftSideBarHeight};
     inline constexpr Rectangle LeftSideBar{
@@ -24,6 +26,9 @@ namespace UI
         .height = static_cast<float>(GamePixelHeight)
     };
 
+    
+    // Bottom sidebar
+    // Displays elements
     inline constexpr auto BottomSideBarWidth{0.8f};
     inline constexpr auto BottomSideBarHeight{1.0f - BottomSideBarWidth};
     inline constexpr Rectangle BottomSideBar{
@@ -32,19 +37,29 @@ namespace UI
         .width = static_cast<float>(GamePixelHeight),
         .height = static_cast<float>(GamePixelHeight) * BottomSideBarHeight
     };
-
-    inline constexpr auto MergeBarWidth{0.22f};
-    inline constexpr auto MergeBarOffset{1.0f - MergeBarWidth};
     
     inline constexpr auto CameraStartPositionRelativeToUI = Vector2{
         .x = (WindowWidth * LeftSideBarHeight)/2.0f,
         .y = (WindowHeight * LeftSideBarHeight)/2.0f,
     };
 
+    // MergeWindow
+    // Displays Merge window
+    inline constexpr auto MergeWindowWidth{0.22f};
+    inline constexpr auto MergeWindowOffset{1.0f - MergeWindowWidth};
+
     inline constexpr Rectangle MergeWindow{
-        .x = static_cast<float>(GamePixelHeight) * MergeBarOffset,
-        .y = static_cast<float>(GamePixelHeight) * MergeBarOffset,
-        .width = static_cast<float>(GamePixelHeight) * MergeBarWidth,
-        .height = static_cast<float>(GamePixelHeight) * MergeBarWidth
+        .x = static_cast<float>(GamePixelHeight) * MergeWindowOffset,
+        .y = static_cast<float>(GamePixelHeight) * MergeWindowOffset,
+        .width = static_cast<float>(GamePixelHeight) * MergeWindowWidth,
+        .height = static_cast<float>(GamePixelHeight) * MergeWindowWidth
+    };
+    
+    // Add Button (Editor mode)
+    inline constexpr Rectangle EDITOR_AddShapeButton{
+        .x = LeftSideBar.x,
+        .y = LeftSideBar.y,
+        .width = LeftSideBar.width,
+        .height = 16.f,
     };
 }

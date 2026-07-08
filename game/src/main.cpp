@@ -8,25 +8,32 @@ enum class Mode : uint8_t
     editor,
 };
 
-struct GameMemory
+struct Level
 {
     // Level data
     MapTiles tileMap;
+};
+
+struct GameMemory
+{
+    Level level;
+
+    // UI ELEMENTS
+    std::vector<UI::Button> buttons;
+
     Music music{};
     Camera2D cameraGame{};
     Camera2D cameraUI{};
     Texture2D hexagon{};
     Vector2 mousePosition{};
 
-    // UI ELEMENTS
-    std::vector<UI::Button> buttons;
-
     Mode currentMode{Mode::game};
 };
 
 namespace
 {
-    std::unique_ptr<GameMemory> GameMem;
+    std::unique_ptr<GameMemory> Game;
+    bool Running;
 
     constexpr const char* ToString(const Mode mode)
     {
@@ -64,6 +71,11 @@ namespace
         return result;
     }
 
+    void Shutdown()
+    {
+        CloseWindow();
+    }
+
     void Init()
     {
 #ifndef _DEBUG
@@ -73,35 +85,38 @@ namespace
         SetTargetFPS(TargetFps);
         InitAudioDevice();
 
-        GameMem = std::make_unique<GameMemory>();
-        GameMem->hexagon = LoadTexture("assets/textures/flathex.png");
+        Game = std::make_unique<GameMemory>();
+        Game->hexagon = LoadTexture("assets/textures/flathex.png");
 
         // Game Camera
-        GameMem->cameraGame.offset = UI::CameraStartPositionRelativeToUI;
+        Game->cameraGame.offset = UI::CameraStartPositionRelativeToUI;
         // UI Camera
-        GameMem->cameraGame.zoom = static_cast<float>(GetScreenHeight()) / GamePixelHeight;
-        GameMem->cameraUI.zoom = static_cast<float>(GetScreenHeight()) / GamePixelHeight;
+        Game->cameraGame.zoom = static_cast<float>(GetScreenHeight()) / GamePixelHeight;
+        Game->cameraUI.zoom = static_cast<float>(GetScreenHeight()) / GamePixelHeight;
 
-        GameMem->music = LoadMusicStream("assets/Music/Goblins_Dance_(Battle).wav");
+        Game->music = LoadMusicStream("assets/Music/Goblins_Dance_(Battle).wav");
 
         // float timePlayed = 0.0f; // Time played normalized [0.0f..1.0f]
         constexpr float pan = 0.0f; // Default audio pan center [-1.0f..1.0f]
-        SetMusicPan(GameMem->music, pan);
+        SetMusicPan(Game->music, pan);
         // Init map
-        GameMem->tileMap.Init();
-        PlayMusicStream(GameMem->music);
-    }
+        Game->level.tileMap.Init();
+        PlayMusicStream(Game->music);
 
-    void Shutdown()
-    {
-        CloseWindow();
+        UI::Button quitButton;
+        quitButton.rect = UI::EDITOR_AddShapeButton;
+        quitButton.text = "Quit";
+        quitButton.onPressed = {[] { Running = false; }};
+        Game->buttons.emplace_back(quitButton);
+        
+        Running = true;
     }
 
     void HandleInput()
     {
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
         {
-            for (const auto& button : GameMem->buttons)
+            for (const auto& button : Game->buttons)
             {
                 if (::UI::IsButtonHovered(button))
                 {
@@ -109,7 +124,7 @@ namespace
                 }
             }
 
-            switch (GameMem->currentMode)
+            switch (Game->currentMode)
             {
             case Mode::game:
                 {
@@ -117,8 +132,8 @@ namespace
                 break;
             case Mode::editor:
                 {
-                    const MapTile current{PixelToHex(GameMem->mousePosition)};
-                    GameMem->tileMap.SetValid(current.row, current.col);
+                    const MapTile current{PixelToHex(Game->mousePosition)};
+                    Game->level.tileMap.SetValid(current.row, current.col);
                 }
                 break;
             }
@@ -127,19 +142,19 @@ namespace
         if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT))
         {
             const auto delta{GetMouseDelta()};
-            GameMem->cameraGame.offset = Vector2Add(GameMem->cameraGame.offset, delta);
+            Game->cameraGame.offset = Vector2Add(Game->cameraGame.offset, delta);
         }
 
 #ifdef _DEBUG
         if (IsKeyPressed(KEY_F2))
         {
-            switch (GameMem->currentMode)
+            switch (Game->currentMode)
             {
             case Mode::game:
-                GameMem->currentMode = Mode::editor;
+                Game->currentMode = Mode::editor;
                 break;
             case Mode::editor:
-                GameMem->currentMode = Mode::game;
+                Game->currentMode = Mode::game;
                 break;
             }
         }
@@ -147,34 +162,34 @@ namespace
 
         const auto delta{GetMouseWheelMove()};
 
-        if (const auto newZoom{GameMem->cameraGame.zoom + delta};
+        if (const auto newZoom{Game->cameraGame.zoom + delta};
             newZoom < MinCameraZoom)
         {
-            GameMem->cameraGame.zoom = MinCameraZoom;
+            Game->cameraGame.zoom = MinCameraZoom;
         }
         else if (newZoom > MaxCameraZoom)
         {
-            GameMem->cameraGame.zoom = MaxCameraZoom;
+            Game->cameraGame.zoom = MaxCameraZoom;
         }
         else
         {
-            GameMem->cameraGame.zoom = newZoom;
+            Game->cameraGame.zoom = newZoom;
         }
     }
 
     void UpdateGame()
     {
-        GameMem->mousePosition = Vector2Divide(Vector2Subtract(GetMousePosition(), GameMem->cameraGame.offset),
-                                               Vector2{.x = GameMem->cameraGame.zoom, .y = GameMem->cameraGame.zoom});
+        Game->mousePosition = Vector2Divide(Vector2Subtract(GetMousePosition(), Game->cameraGame.offset),
+                                            Vector2{.x = Game->cameraGame.zoom, .y = Game->cameraGame.zoom});
 
-        UpdateMusicStream(GameMem->music); // Update music buffer with new stream data
+        UpdateMusicStream(Game->music); // Update music buffer with new stream data
     }
 
     void DrawGame()
     {
-        BeginMode2D(GameMem->cameraGame);
+        BeginMode2D(Game->cameraGame);
 
-        const MapTile current{PixelToHex(GameMem->mousePosition)};
+        const MapTile current{PixelToHex(Game->mousePosition)};
         for (const int row : MapTiles::iterator)
         {
             for (const int col : MapTiles::iterator)
@@ -187,12 +202,12 @@ namespace
                 auto color = WHITE;
                 if (row == current.row && col == current.col)
                 {
-                    color = GameMem->tileMap.At(row, col).isValid ? RED : GREEN;
-                    DrawTextureEx(GameMem->hexagon, pos, 0.f, 1.0f, color);
+                    color = Game->level.tileMap.At(row, col).isValid ? RED : GREEN;
+                    DrawTextureEx(Game->hexagon, pos, 0.f, 1.0f, color);
                 }
-                if (GameMem->tileMap.At(row, col).isValid)
+                if (Game->level.tileMap.At(row, col).isValid)
                 {
-                    DrawTextureEx(GameMem->hexagon, pos, 0.f, 1.0f, color);
+                    DrawTextureEx(Game->hexagon, pos, 0.f, 1.0f, color);
                     //DrawText(std::format("R{}, Q{}", row, col).c_str(), static_cast<int>(pos.x), static_cast<int>(pos.y), 1, GREEN);
                 }
             }
@@ -203,20 +218,34 @@ namespace
 
     void DrawUI()
     {
-        BeginMode2D(GameMem->cameraUI);
+        BeginMode2D(Game->cameraUI);
 
         DrawRectangleRec(UI::LeftSideBar, GRAY);
         DrawRectangleRec(UI::BottomSideBar, GRAY);
         DrawRectangleRec(UI::MergeWindow, DARKGRAY);
 
+        for (const auto& button : Game->buttons)
+        {
+            if (::UI::IsButtonHovered(button))
+            {
+                DrawRectangleRec(button.rect, Color{ 40, 40, 40, 255 } );
+            }
+            else
+            {
+                DrawRectangleRec(button.rect, DARKGRAY);
+            }
+            
+            DrawText(button.text.data(), static_cast<int>(button.rect.x), static_cast<int>(button.rect.y), 8, BLACK);
+        }
+
         auto textPositionY{0};
-        if (GameMem->currentMode == Mode::editor)
+        if (Game->currentMode == Mode::editor)
         {
             DrawFPS(0, 0);
             textPositionY += 16;
         }
 
-        DrawText(std::format("Mode: {}", ToString(GameMem->currentMode)).c_str(),
+        DrawText(std::format("Mode: {}", ToString(Game->currentMode)).c_str(),
                  0, textPositionY, 8, BLUE);
 
         EndMode2D();
@@ -237,6 +266,11 @@ namespace
     //main game loop
     void Run()
     {
+        if (!Game)
+        {
+            return;
+        }
+        
         HandleInput();
         UpdateGame();
         DrawFrame();
@@ -249,7 +283,7 @@ int main()
 #ifdef PLATFORM_WEB
     emscripten_set_main_loop(Run, TargetFps, 1);
 #else
-    while (!WindowShouldClose())
+    while (!WindowShouldClose() && Running)
     {
         Run();
     }
