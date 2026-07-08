@@ -4,14 +4,27 @@ namespace UI
 {
     // button /////////////////////////////////////////////////////////////////////////////////////////////////////////
     
+    enum class Alignment : uint8_t {
+        left   = 0,
+        top    = 0,
+        centre = 1,
+        middle = 1,
+        right  = 2,
+        bottom = 2
+    };
+    
     struct Button
     {
         std::function<void()> onPressed;
         Rectangle rect;
         std::string_view text;
+        int fontSize{8};
+        Alignment textAlignment{Alignment::centre};
     };
     
+    void RenderButton(const Button& button);
     bool IsButtonHovered(const Button& button);
+    
     
     // UI ELEMENTS ////////////////////////////////////////////////////////////////////////////////////////////////////
     

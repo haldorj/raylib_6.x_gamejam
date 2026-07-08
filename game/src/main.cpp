@@ -108,7 +108,7 @@ namespace
         quitButton.text = "Quit";
         quitButton.onPressed = {[] { Running = false; }};
         Game->buttons.emplace_back(quitButton);
-        
+
         Running = true;
     }
 
@@ -220,22 +220,13 @@ namespace
     {
         BeginMode2D(Game->cameraUI);
 
-        DrawRectangleRec(UI::LeftSideBar, GRAY);
-        DrawRectangleRec(UI::BottomSideBar, GRAY);
+        DrawRectangleRec(UI::LeftSideBar, LIGHTGRAY);
+        DrawRectangleRec(UI::BottomSideBar, LIGHTGRAY);
         DrawRectangleRec(UI::MergeWindow, DARKGRAY);
 
         for (const auto& button : Game->buttons)
         {
-            if (::UI::IsButtonHovered(button))
-            {
-                DrawRectangleRec(button.rect, Color{ 40, 40, 40, 255 } );
-            }
-            else
-            {
-                DrawRectangleRec(button.rect, DARKGRAY);
-            }
-            
-            DrawText(button.text.data(), static_cast<int>(button.rect.x), static_cast<int>(button.rect.y), 8, BLACK);
+            UI::RenderButton(button);
         }
 
         auto textPositionY{0};
@@ -270,7 +261,7 @@ namespace
         {
             return;
         }
-        
+
         HandleInput();
         UpdateGame();
         DrawFrame();
