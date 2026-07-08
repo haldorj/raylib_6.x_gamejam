@@ -5,7 +5,7 @@
 enum class Mode : uint8_t
 {
     game,
-    editor,
+    editorNormal,
 };
 
 struct Level
@@ -33,14 +33,16 @@ struct GameMemory
 namespace
 {
     std::unique_ptr<GameMemory> Game;
+#ifndef PLATFORM_WEB
     bool Running;
+#endif
 
     constexpr const char* ToString(const Mode mode)
     {
         switch (mode)
         {
         case Mode::game: return "GAME";
-        case Mode::editor: return "EDITOR";
+        case Mode::editorNormal: return "EDITOR";
         }
         return "UNKNOWN";
     }
@@ -102,14 +104,16 @@ namespace
         // Init map
         Game->level.tileMap.Init();
         PlayMusicStream(Game->music);
-
+        
+        // DESKTOP ONLY
+#ifndef PLATFORM_WEB
         UI::Button quitButton;
         quitButton.rect = UI::EDITOR_AddShapeButton;
         quitButton.text = "Quit";
         quitButton.onPressed = {[] { Running = false; }};
         Game->buttons.emplace_back(quitButton);
-
         Running = true;
+#endif
     }
 
     void HandleInput()
@@ -130,7 +134,7 @@ namespace
                 {
                 }
                 break;
-            case Mode::editor:
+            case Mode::editorNormal:
                 {
                     const MapTile current{PixelToHex(Game->mousePosition)};
                     Game->level.tileMap.SetValid(current.row, current.col);
@@ -151,9 +155,9 @@ namespace
             switch (Game->currentMode)
             {
             case Mode::game:
-                Game->currentMode = Mode::editor;
+                Game->currentMode = Mode::editorNormal;
                 break;
-            case Mode::editor:
+            case Mode::editorNormal:
                 Game->currentMode = Mode::game;
                 break;
             }
@@ -230,7 +234,7 @@ namespace
         }
 
         auto textPositionY{0};
-        if (Game->currentMode == Mode::editor)
+        if (Game->currentMode == Mode::editorNormal)
         {
             DrawFPS(0, 0);
             textPositionY += 16;
