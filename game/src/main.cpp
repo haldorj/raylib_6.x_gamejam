@@ -118,6 +118,7 @@ namespace
         }
         EndTextureMode();
         EndDrawing();
+        SetTextureFilter(renderTexture.texture, TEXTURE_FILTER_BILINEAR);
         return renderTexture;
     }
 
@@ -202,7 +203,7 @@ namespace
                     }
                     break;
                 }
-                
+
                 if (!Game->level.tempShape.IsEmpty())
                 {
                     auto newShape{Game->level.tempShape.ValidTiles()};
@@ -370,14 +371,22 @@ namespace
                 .width = static_cast<float>(tex.texture.width),
                 .height = -static_cast<float>(tex.texture.height)
             };
-            constexpr auto initialOffset{40.0f};
+           
+            constexpr auto scaleFactor{0.9f};
+            constexpr auto indentValue{UI::LeftSideBar.width * (1.0f - scaleFactor) * 0.5f};
+            float initialOffset{indentValue};
+            if (Game->currentMode != Mode::game)
+            {
+                initialOffset = 40.f;
+            }
+
             const Rectangle dest = {
-                .x = UI::LeftSideBar.x,
+                .x = UI::LeftSideBar.x + indentValue,
                 .y = UI::LeftSideBar.y + initialOffset + (index * UI::LeftSideBar.width),
-                .width = UI::LeftSideBar.width,
-                .height = UI::LeftSideBar.width,
+                .width = UI::LeftSideBar.width * scaleFactor,
+                .height = UI::LeftSideBar.width * scaleFactor,
             };
-            DrawTexturePro(tex.texture, source, dest, Vector2{.x = 0, .y = 0}, 0.0f,WHITE);
+            DrawTexturePro(tex.texture, source, dest, Vector2{.x = 0, .y = 0}, 0.0f, WHITE);
             index++;
         }
 
