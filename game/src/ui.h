@@ -9,8 +9,10 @@ namespace UI
         std::function<void()> onPressed;
         Rectangle rect;
         std::string_view text;
+        int fontSize{8};
     };
     
+    void RenderButton(const Button& button);
     bool IsButtonHovered(const Button& button);
     
     // UI ELEMENTS ////////////////////////////////////////////////////////////////////////////////////////////////////
