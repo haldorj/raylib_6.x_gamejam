@@ -2,48 +2,49 @@
 #include "ui.h"
 #include "tilemap.h"
 
-enum class Mode : uint8_t
-{
-    game,
-    editorNormal,
-    editorAddShape,
-};
-
-struct Level
-{
-    // Level data
-    MapTiles tileMap;
-    std::vector<std::vector<MapTile>> shapes;
-    
-    std::vector<MapTile> tempShape;
-};
-
-constexpr auto MaxButtons{static_cast<size_t>(UI::ButtonType::count)};
-struct GameMemory
-{
-    Level level;
-    
-    // UI ELEMENTS
-    std::array<UI::Button, MaxButtons> buttons;
-
-    Music music{};
-    
-    Camera2D cameraGame{};
-    Camera2D cameraUI{};
-    Vector2 mousePosition{};
-    
-    // TODO: make arrays for assets
-    Texture2D hexagon{};
-    Sound fxButton {};
-
-    Mode currentMode{Mode::game};
-};
-
 namespace
 {
+    enum class Mode : uint8_t
+    {
+        game,
+        editorNormal,
+        editorAddShape,
+    };
+
+    struct Level
+    {
+        // Level data
+        MapTiles tileMap;
+        MapTiles tempShape;
+        std::vector<std::vector<MapTile>> shapes;
+    };
+
+    constexpr auto MaxButtons{static_cast<size_t>(UI::ButtonType::count)};
+
+    struct GameMemory
+    {
+        Level level;
+
+        // UI ELEMENTS
+        std::array<UI::Button, MaxButtons> buttons;
+
+        Music music{};
+
+        Camera2D cameraGame{};
+        Camera2D cameraUI{};
+        Vector2 mousePosition{};
+
+        // TODO: make arrays for assets
+        Texture2D hexagon{};
+        Sound fxButton{};
+
+        Mode currentMode{Mode::game};
+    };
+
+
     std::unique_ptr<GameMemory> Game;
-    const auto visibleEditorOnly = []{ return Game->currentMode != Mode::game; };
-    const auto visibleShapeModeOnly = []{ return Game->currentMode == Mode::editorAddShape; };
+    const auto visibleEditorOnly = [] { return Game->currentMode != Mode::game; };
+    const auto visibleShapeModeOnly = [] { return Game->currentMode == Mode::editorAddShape; };
 
 #ifndef PLATFORM_WEB
     bool Running;
@@ -111,14 +112,14 @@ namespace
 
         Game->music = LoadMusicStream("assets/Music/Goblins_Dance_(Battle).wav");
         Game->fxButton = LoadSound("assets/Sound effects/UI sounds/menu_blip.wav");
-        
+
         // float timePlayed = 0.0f; // Time played normalized [0.0f..1.0f]
         constexpr float pan = 0.0f; // Default audio pan center [-1.0f..1.0f]
         SetMusicPan(Game->music, pan);
         // Init map
         Game->level.tileMap.Init();
         PlayMusicStream(Game->music);
-        
+
         auto& shapeButton = Game->buttons.at(static_cast<size_t>(UI::ButtonType::addShape));
         shapeButton.rect = UI::EDITOR_AddShapeButton;
         shapeButton.text = "Add Shape";
@@ -131,6 +132,8 @@ namespace
                 case Mode::game: break;
                 case Mode::editorNormal:
                     {
+                        auto& tempShape{Game->level.tempShape};
+                        tempShape.Init();
                         Game->buttons.at(static_cast<size_t>(UI::ButtonType::addShape)).text = "Cancel";
                         Game->currentMode = Mode::editorAddShape;
                     }
@@ -145,24 +148,18 @@ namespace
             }
         };
         shapeButton.isVisible = visibleEditorOnly;
-        
+
         auto& saveShapeButton = Game->buttons.at(static_cast<size_t>(UI::ButtonType::saveShape));
         saveShapeButton.rect = UI::EDITOR_SaveShapeButton;
         saveShapeButton.text = "Save";
         saveShapeButton.onPressed = {
             []
             {
-                const auto& tempShape{Game->level.tempShape};
-                if (tempShape.empty())
-                {
-                    return;
-                }
-
-                Game->level.shapes.push_back(tempShape);
+                Game->currentMode = Mode::editorNormal;
             }
         };
         saveShapeButton.isVisible = visibleShapeModeOnly;
-        
+
 #ifndef PLATFORM_WEB
         Running = true;
 #endif
@@ -194,6 +191,10 @@ namespace
                 }
                 break;
             case Mode::editorAddShape:
+                {
+                    const MapTile current{PixelToHex(Game->mousePosition)};
+                    Game->level.tempShape.SetValid(current.row, current.col);
+                }
                 break;
             }
         }
@@ -244,11 +245,9 @@ namespace
 
         UpdateMusicStream(Game->music); // Update music buffer with new stream data
     }
-
-    void DrawGameScreen()
+    
+    void DrawMap(MapTiles& map)
     {
-        BeginMode2D(Game->cameraGame);
-
         const MapTile current{PixelToHex(Game->mousePosition)};
         for (const int row : MapTiles::iterator)
         {
@@ -262,17 +261,31 @@ namespace
                 auto color = WHITE;
                 if (row == current.row && col == current.col)
                 {
-                    color = Game->level.tileMap.At(row, col).isValid ? RED : GREEN;
+                    color = map.At(row, col).isValid ? RED : GREEN;
                     DrawTextureEx(Game->hexagon, pos, 0.f, 1.0f, color);
                 }
-                if (Game->level.tileMap.At(row, col).isValid)
+                if (map.At(row, col).isValid)
                 {
                     DrawTextureEx(Game->hexagon, pos, 0.f, 1.0f, color);
-                    //DrawText(std::format("R{}, Q{}", row, col).c_str(), static_cast<int>(pos.x), static_cast<int>(pos.y), 1, GREEN);
                 }
             }
         }
+    }
 
+    void DrawGameScreen()
+    {
+        BeginMode2D(Game->cameraGame);
+
+        switch (Game->currentMode)
+        {
+        case Mode::game:
+        case Mode::editorNormal:
+            DrawMap(Game->level.tileMap);
+            break;
+        case Mode::editorAddShape:
+            DrawMap(Game->level.tempShape);
+            break;
+        }
         EndMode2D();
     }
 
@@ -308,20 +321,7 @@ namespace
 
         ClearBackground(BLACK);
 
-        switch (Game->currentMode)
-        {
-        case Mode::game:
-            {
-                DrawGameScreen();
-            }
-            break;
-        case Mode::editorNormal:
-            {
-                DrawGameScreen();
-            }
-            break;
-        }
-
+        DrawGameScreen();
         DrawUI();
 
         EndDrawing();
