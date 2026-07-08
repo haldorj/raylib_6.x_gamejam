@@ -155,6 +155,11 @@ namespace
         saveShapeButton.onPressed = {
             []
             {
+                if (!Game->level.tempShape.IsEmpty())
+                {
+                    Game->level.shapes.emplace_back(Game->level.tempShape.ValidTiles());
+                }
+                
                 Game->currentMode = Mode::editorNormal;
             }
         };

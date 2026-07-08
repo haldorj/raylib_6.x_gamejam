@@ -25,6 +25,7 @@ namespace UI
     
     void RenderButton(const Button& button);
     bool IsButtonHovered(const Button& button);
+    bool IsButtonVisible(const Button& button);
     
     // UI ELEMENTS ////////////////////////////////////////////////////////////////////////////////////////////////////
     
