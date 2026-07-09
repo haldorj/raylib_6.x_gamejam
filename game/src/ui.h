@@ -2,33 +2,40 @@
 
 namespace UI
 {
-    // button /////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    enum class ButtonType : std::uint8_t
-    {
-        none = 0,
-        addShape,
-        saveShape,
-        // Don't add enums past this one.
-        count // Max Buttons
-    };
-    
-    struct Button
-    {
-        std::function<void()> onPressed;
-        std::function<bool()> isVisible;
-        Rectangle rect;
-        std::string text;
-        int fontSize{8};
-        ButtonType type;
-    };
-    
-    void RenderButton(const Button& button);
-    bool IsButtonHovered(const Button& button);
-    bool IsButtonVisible(const Button& button);
-    
     // UI ELEMENTS ////////////////////////////////////////////////////////////////////////////////////////////////////
-    
+
+    constexpr Vector2 ScreenCenter{
+        .x = GamePixelHeight * 0.5,
+        .y = GamePixelHeight * 0.5,
+    };
+
+    // GenericButton
+    inline constexpr auto GenericButtonHeight{16.0f};
+    inline constexpr auto GenericButtonWidth{64.0f};
+    // Prompt window
+    inline constexpr auto MessageBoxWidth{250};
+    inline constexpr auto MessageBoxHeight{100};
+    inline constexpr Rectangle MessageBox{
+        .x = ScreenCenter.x - (MessageBoxWidth * 0.5f),
+        .y = ScreenCenter.y - (MessageBoxHeight * 0.5f),
+        .width = MessageBoxWidth,
+        .height = MessageBoxHeight
+    };
+    // Prompt accept
+    // inline constexpr Rectangle PromptAccept{
+    //     .x = PromptWindowRect.x + MessageBoxWidth * 0.25f,
+    //     .y = PromptWindowRect.height - GenericButtonHeight,
+    //     .width = GenericButtonWidth,
+    //     .height = GenericButtonHeight,
+    // };
+    // // Prompt cancel
+    // inline constexpr Rectangle PromptCancel{
+    //     .x = PromptWindowRect.width * 0.5f + GenericButtonWidth * 0.5f,
+    //     .y = PromptWindowRect.height - GenericButtonHeight,
+    //     .width = GenericButtonWidth,
+    //     .height = GenericButtonHeight
+    // };
+
     // Left sidebar
     // Displays hex-shapes
     inline constexpr auto LeftSideBarHeight{0.8f};
@@ -39,7 +46,6 @@ namespace UI
         .width = static_cast<float>(GamePixelHeight) * LeftSideBarWidth,
         .height = static_cast<float>(GamePixelHeight)
     };
-
     
     // Bottom sidebar
     // Displays elements
@@ -51,10 +57,10 @@ namespace UI
         .width = static_cast<float>(GamePixelHeight),
         .height = static_cast<float>(GamePixelHeight) * BottomSideBarHeight
     };
-    
+
     inline constexpr auto CameraStartPositionRelativeToUI = Vector2{
-        .x = (WindowWidth * LeftSideBarHeight)/2.0f,
-        .y = (WindowHeight * LeftSideBarHeight)/2.0f,
+        .x = (WindowWidth * LeftSideBarHeight) / 2.0f,
+        .y = (WindowHeight * LeftSideBarHeight) / 2.0f,
     };
 
     // MergeWindow
@@ -68,7 +74,7 @@ namespace UI
         .width = static_cast<float>(GamePixelHeight) * MergeWindowWidth,
         .height = static_cast<float>(GamePixelHeight) * MergeWindowWidth
     };
-    
+
     // Add Button (Editor mode)
     inline constexpr Rectangle EDITOR_AddShapeButton{
         .x = LeftSideBar.x,
@@ -76,7 +82,7 @@ namespace UI
         .width = LeftSideBar.width,
         .height = 16.f,
     };
-    
+
     // Save shape
     inline constexpr Rectangle EDITOR_SaveShapeButton{
         .x = LeftSideBar.x,
