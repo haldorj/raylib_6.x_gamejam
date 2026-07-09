@@ -69,6 +69,14 @@ namespace UI
         .height = static_cast<float>(GamePixelHeight) * MergeWindowWidth
     };
     
+    inline constexpr auto QuitbuttonX{0.5f * LeftSideBarWidth};
+    inline constexpr auto QuitbuttonY{0.5f * BottomSideBarWidth};
+    inline constexpr Rectangle Quit{
+        .x = QuitbuttonX, 
+        .y = QuitbuttonY,
+        .width = 100,
+        .height = 50,
+    };
     // Add Button (Editor mode)
     inline constexpr Rectangle EDITOR_AddShapeButton{
         .x = LeftSideBar.x,

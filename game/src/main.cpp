@@ -39,6 +39,7 @@ namespace
         // TODO: make arrays for assets
         Texture2D hexagon{};
         Sound fxButton{};
+        Texture2D quitIcon{};   
 
         Mode currentMode{Mode::game};
     };
@@ -133,6 +134,7 @@ namespace
 
         Game = std::make_unique<GameMemory>();
         Game->hexagon = LoadTexture("assets/textures/flathex.png");
+        Game->quitIcon = LoadTexture("assets/textures/UI/Exit button.png");
 
         // Game Camera
         Game->cameraGame.offset = UI::CameraStartPositionRelativeToUI;
@@ -350,7 +352,14 @@ namespace
         DrawRectangleRec(UI::LeftSideBar, LIGHTGRAY);
         DrawRectangleRec(UI::BottomSideBar, LIGHTGRAY);
         DrawRectangleRec(UI::MergeWindow, DARKGRAY);
-
+        DrawRectangleRec(UI::Quit,BROWN);
+        const Rectangle quitIconSource{
+            .x = 0,
+            .y = 0,
+            .width = static_cast<float>(Game->quitIcon.width),
+            .height = static_cast<float>(Game->quitIcon.height)
+        };
+        DrawTexturePro(Game->quitIcon, quitIconSource, UI::Quit, Vector2{0, 0}, 0.0f, WHITE);
         for (const auto& button : Game->buttons)
         {
             UI::RenderButton(button);
