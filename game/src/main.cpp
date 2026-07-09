@@ -29,6 +29,7 @@ struct GameMemory
     Texture2D hexagon{};
     Vector2 mousePosition{};
     Sound fxButton {};
+    Texture2D quitTex{};
 
     Mode currentMode{Mode::game};
 };
@@ -91,8 +92,12 @@ namespace
         InitAudioDevice();
 
         Game = std::make_unique<GameMemory>();
+        //textures loaded
         Game->hexagon = LoadTexture("assets/textures/flathex.png");
+        Game->quitTex = LoadTexture("assets/textures/UI/Exit button.png");
 
+        
+        
         // Game Camera
         Game->cameraGame.offset = UI::CameraStartPositionRelativeToUI;
         // UI Camera
@@ -107,7 +112,7 @@ namespace
         SetMusicPan(Game->music, pan);
         // Init map
         Game->level.tileMap.Init();
-        PlayMusicStream(Game->music);
+        //PlayMusicStream(Game->music);
         
         // DESKTOP ONLY
 #ifndef PLATFORM_WEB
@@ -115,6 +120,8 @@ namespace
         quitButton.rect = UI::EDITOR_AddShapeButton;
         quitButton.text = "Quit";
         quitButton.onPressed = {[] { Running = false; }};
+
+        
         Game->buttons.emplace_back(quitButton);
         Running = true;
 #endif
