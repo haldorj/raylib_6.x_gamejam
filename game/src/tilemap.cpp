@@ -38,6 +38,39 @@ void MapTiles::SetValid(const int row, const int col)
     currenTile.isValid = !currenTile.isValid;
 }
 
+bool MapTiles::IsEmpty()
+{
+    for (const auto row : iterator)
+    {
+        for (const auto col : iterator)
+        {
+            if (At(row, col).isValid)
+            {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+std::vector<MapTile> MapTiles::ValidTiles()
+{
+    std::vector<MapTile> result;
+    result.reserve(MapSize);
+    for (const auto row : iterator)
+    {
+        for (const auto col : iterator)
+        {
+            if (At(row, col).isValid)
+            {
+                result.push_back(At(row, col));
+            }
+        }
+    }
+    result.shrink_to_fit();
+    return result;
+}
+
 bool MapTiles::ValidIndex(const int row, const int col)
 {
     return (row >= -MaxTilesFromCenter && row <= MaxTilesFromCenter && col >= -MaxTilesFromCenter && col <= MaxTilesFromCenter);

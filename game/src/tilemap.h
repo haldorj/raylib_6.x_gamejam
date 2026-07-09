@@ -20,6 +20,9 @@ public:
 
     MapTile& At(int row, int col);
     void SetValid(int row, int col);
+    bool IsEmpty();
+    
+    std::vector<MapTile> ValidTiles();
 
     static constexpr auto iterator{std::views::iota(-MaxTilesFromCenter, MaxTilesFromCenter)};
     

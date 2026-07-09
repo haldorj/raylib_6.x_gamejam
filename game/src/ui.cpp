@@ -5,6 +5,10 @@ namespace UI
 {
     void RenderButton(const Button& button)
     {
+        if (!IsButtonVisible(button))
+        {
+            return;
+        }
         if (IsButtonHovered(button))
         {
             DrawRectangleRec(button.rect, DARKGRAY);
@@ -16,7 +20,7 @@ namespace UI
 
         if (!button.text.empty())
         {
-            DrawText(button.text.data(),
+            DrawText(button.text.c_str(),
                      static_cast<int>(button.rect.x),
                      static_cast<int>(button.rect.y),
                      button.fontSize,
@@ -26,10 +30,24 @@ namespace UI
 
     auto IsButtonHovered(const Button& button) -> bool
     {
+        if (!IsButtonVisible(button))
+        {
+            return false;
+        }
         const Vector2 mousePos{
             .x = GamePixelHeight * (GetMousePosition().x / static_cast<float>(GetScreenHeight())),
             .y = GamePixelHeight * (GetMousePosition().y / static_cast<float>(GetScreenHeight()))
         };
         return CheckCollisionPointRec(mousePos, button.rect);
+    }
+
+    bool IsButtonVisible(const Button& button)
+    {
+        if (const auto& visible = button.isVisible;
+            visible)
+        {
+            return visible();
+        }
+        return true;
     }
 }
