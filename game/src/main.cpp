@@ -1,5 +1,7 @@
 #include "pch.h"
 
+#include <optional>
+
 #include "ui.h"
 #include "tilemap.h"
 
@@ -23,7 +25,7 @@ namespace
         std::vector<std::pair<shape, RenderTexture>> shapes;
     };
 
-    enum struct MessageBoxState
+    enum struct MessageBoxState : uint8_t
     {
         none,
         saveShape,
@@ -41,8 +43,8 @@ namespace
         Vector2 mousePosition{};
 
         // TODO: make arrays for assets
-        Texture2D hexagon{};
         Sound fxButton{};
+        Texture2D hexagon{};
 
         Mode currentMode{Mode::game};
         MessageBoxState messageBoxState{MessageBoxState::none};
@@ -124,6 +126,25 @@ namespace
         EndDrawing();
         SetTextureFilter(renderTexture.texture, TEXTURE_FILTER_BILINEAR);
         return renderTexture;
+    }
+
+    void AddShape()
+    {
+        if (!Game->level.tempShape.IsEmpty())
+        {
+            auto newShape{Game->level.tempShape.ValidTiles()};
+            const auto previewTexture{GeneratePreviewTexture(newShape)};
+            Game->level.shapes.emplace_back(newShape, previewTexture);
+        }
+    }
+
+    void RemoveShapeAtIndex(const size_t index)
+    {
+        if (auto& shapes{Game->level.shapes}; index < shapes.size())
+        {
+            UnloadRenderTexture(shapes.at(index).second);
+            shapes.erase(shapes.begin() + static_cast<int>(index));
+        }
     }
 
     void Init()
@@ -301,11 +322,13 @@ namespace
         if (Game->currentMode == Mode::editorNormal)
         {
             DrawFPS(0, 0);
-            textPositionY += 16;
+            constexpr auto fpsTextSize{16};
+            textPositionY += fpsTextSize;
         }
         auto index{0};
-        for (const auto& tex : Game->level.shapes | std::views::values)
+        for (auto i{0uz}; i < Game->level.shapes.size(); ++i)
         {
+            const auto& tex{Game->level.shapes.at(i).second};
             const Rectangle source = {
                 .x = 0,
                 .y = 0,
@@ -327,7 +350,7 @@ namespace
                 .width = UI::LeftSideBar.width * scaleFactor,
                 .height = UI::LeftSideBar.width * scaleFactor,
             };
-            static auto currentIndex{0};
+            static std::optional<int> currentIndex{};
             if (GuiButton(dest, "") > 0)
             {
                 switch (Game->currentMode)
@@ -352,12 +375,17 @@ namespace
                 const auto result{
                     GuiMessageBox(UI::MessageBox,
                                   "Save",
-                                  std::format("Do you want to delete the current shape? ({})", currentIndex).c_str(),
+                                  std::format("Do you want to delete the current shape?").c_str(),
                                   "YES;NO")
                 };
                 if (result == 1)
                 {
                     // DELETE
+                    if (currentIndex.has_value())
+                    {
+                        RemoveShapeAtIndex(currentIndex.value());
+                    }
+                        
                     Game->messageBoxState = MessageBoxState::none;
                 }
                 if (result == 2)
@@ -405,12 +433,7 @@ namespace
                     };
                     if (result == 1) //YES
                     {
-                        if (!Game->level.tempShape.IsEmpty())
-                        {
-                            auto newShape{Game->level.tempShape.ValidTiles()};
-                            const auto previewTexture{GeneratePreviewTexture(newShape)};
-                            Game->level.shapes.emplace_back(newShape, previewTexture);
-                        }
+                        AddShape();
                         Game->messageBoxState = MessageBoxState::none;
                         Game->currentMode = Mode::editorNormal;
                     }
@@ -427,7 +450,7 @@ namespace
             break;
         }
         DrawText(std::format("Mode: {}", ToString(Game->currentMode)).c_str(),
-                 0, textPositionY, 8, BLUE);
+                 0, textPositionY, 16, BLUE);
 
         EndMode2D();
     }
