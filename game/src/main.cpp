@@ -1,68 +1,15 @@
 #include "pch.h"
+
 #include "ui.h"
 #include "tilemap.h"
+#include "game.h"
 
 namespace
 {
-    enum class Mode : uint8_t
-    {
-        game,
-        editorNormal,
-        editorAddShape,
-    };
-
-    using shape = std::vector<MapTile>;
-
-    struct Level
-    {
-        // Level data
-        MapTiles tileMap; // Main level
-        MapTiles tempShape; // Shape editor level
-        std::vector<std::pair<shape, RenderTexture>> shapes;
-    };
-
-    constexpr auto MaxButtons{static_cast<size_t>(UI::ButtonType::count)};
-
-    struct GameMemory
-    {
-        Level level;
-
-        // UI ELEMENTS
-        std::array<UI::Button, MaxButtons> buttons;
-
-        Music music{};
-
-        Camera2D cameraGame{};
-        Camera2D cameraUI{};
-        Vector2 mousePosition{};
-
-        // TODO: make arrays for assets
-        Texture2D hexagon{};
-        Sound fxButton{};
-        Texture2D quitIcon{};   
-
-        Mode currentMode{Mode::game};
-    };
-
-
     std::unique_ptr<GameMemory> Game;
-    const auto visibleEditorOnly = [] { return Game->currentMode != Mode::game; };
-    const auto visibleShapeModeOnly = [] { return Game->currentMode == Mode::editorAddShape; };
-
 #ifndef PLATFORM_WEB
     bool Running;
 #endif
-
-    constexpr const char* ToString(const Mode mode)
-    {
-        switch (mode)
-        {
-        case Mode::game: return "GAME";
-        case Mode::editorNormal: return "EDITOR";
-        case Mode::editorAddShape: return "ADD SHAPE";
-        }
-        return "UNKNOWN";
-    }
 
     Vector2 HexToPixel(const int row, const int column)
     {
@@ -84,8 +31,8 @@ namespace
         const auto col{2.0 / 3 * x};
         const auto row{-1.0 / 3 * x + std::numbers::sqrt3 / 3 * y};
         const auto result = MapTile{
-            .row = static_cast<int>(std::round(row)),
-            .col = static_cast<int>(std::round(col))
+            .row = static_cast<int8_t>(std::round(row)),
+            .col = static_cast<int8_t>(std::round(col))
         };
         return result;
     }
@@ -123,24 +70,56 @@ namespace
         return renderTexture;
     }
 
+    void AddShape()
+    {
+        if (!Game->level.tempShape.IsEmpty())
+        {
+            auto newShape{Game->level.tempShape.ValidTiles()};
+            const auto previewTexture{GeneratePreviewTexture(newShape)};
+            Game->level.shapes.emplace_back(newShape, previewTexture);
+        }
+    }
+
+    void RemoveShapeAtIndex(const size_t index)
+    {
+        if (auto& shapes{Game->level.shapes}; index < shapes.size())
+        {
+            UnloadRenderTexture(shapes.at(index).second);
+            shapes.erase(shapes.begin() + static_cast<int>(index));
+        }
+    }
+
+    void AddSpell(const Spell spell)
+    {
+        Game->level.spells.push_back(spell);
+    }
+
+    void RemoveSpellAtIndex(const size_t index)
+    {
+        if (auto& spells{Game->level.spells}; index < spells.size())
+        {
+            spells.erase(spells.begin() + static_cast<int>(index));
+        }
+    }
+
     void Init()
     {
 #ifndef _DEBUG
         SetTraceLogLevel(LOG_NONE); // Disable raylib trace log messages
 #endif
-        InitWindow(WindowWidth, WindowHeight, "");
+        InitWindow(static_cast<int>(WindowWidth), static_cast<int>(WindowHeight), "");
         SetTargetFPS(TargetFps);
         InitAudioDevice();
 
         Game = std::make_unique<GameMemory>();
         Game->hexagon = LoadTexture("assets/textures/flathex.png");
-        Game->quitIcon = LoadTexture("assets/textures/UI/Exit button.png");
 
         // Game Camera
-        Game->cameraGame.offset = UI::CameraStartPositionRelativeToUI;
+        constexpr auto gamePixelHeight{180.f};
+        Game->cameraGame.offset = UI::GameCameraStartPosition;
+        Game->cameraGame.zoom = static_cast<float>(GetScreenHeight()) / gamePixelHeight;
         // UI Camera
-        Game->cameraGame.zoom = static_cast<float>(GetScreenHeight()) / GamePixelHeight;
-        Game->cameraUI.zoom = static_cast<float>(GetScreenHeight()) / GamePixelHeight;
+        Game->cameraUI.zoom = 1.0f; // no scale;
 
         Game->music = LoadMusicStream("assets/Music/Goblins_Dance_(Battle).wav");
         Game->fxButton = LoadSound("assets/Sound effects/UI sounds/menu_blip.wav");
@@ -152,95 +131,34 @@ namespace
         Game->level.tileMap.Init();
         PlayMusicStream(Game->music);
 
-        auto& shapeButton = Game->buttons.at(static_cast<size_t>(UI::ButtonType::addShape));
-        shapeButton.rect = UI::EDITOR_AddShapeButton;
-        shapeButton.text = "Add Shape";
-        shapeButton.type = UI::ButtonType::addShape;
-        shapeButton.onPressed = {
-            []
-            {
-                switch (Game->currentMode)
-                {
-                case Mode::game: break;
-                case Mode::editorNormal:
-                    {
-                        auto& tempShape{Game->level.tempShape};
-                        tempShape.Init();
-                        Game->buttons.at(static_cast<size_t>(UI::ButtonType::addShape)).text = "Cancel";
-                        Game->currentMode = Mode::editorAddShape;
-                    }
-                    break;
-                case Mode::editorAddShape:
-                    {
-                        Game->buttons.at(static_cast<size_t>(UI::ButtonType::addShape)).text = "Add Shape";
-                        Game->currentMode = Mode::editorNormal;
-                    }
-                    break;
-                }
-            }
-        };
-        shapeButton.isVisible = visibleEditorOnly;
-
-        auto& saveShapeButton = Game->buttons.at(static_cast<size_t>(UI::ButtonType::saveShape));
-        saveShapeButton.rect = UI::EDITOR_SaveShapeButton;
-        saveShapeButton.text = "Save";
-        saveShapeButton.onPressed = {
-            []
-            {
-                switch (Game->currentMode)
-                {
-                case Mode::game: break;
-                case Mode::editorNormal:
-                    {
-                        auto& tempShape{Game->level.tempShape};
-                        tempShape.Init();
-                        Game->buttons.at(static_cast<size_t>(UI::ButtonType::addShape)).text = "Cancel";
-                        Game->currentMode = Mode::editorAddShape;
-                    }
-                    break;
-                case Mode::editorAddShape:
-                    {
-                        Game->buttons.at(static_cast<size_t>(UI::ButtonType::addShape)).text = "Add Shape";
-                        Game->currentMode = Mode::editorNormal;
-                    }
-                    break;
-                }
-
-                if (!Game->level.tempShape.IsEmpty())
-                {
-                    auto newShape{Game->level.tempShape.ValidTiles()};
-                    const auto previewTexture{GeneratePreviewTexture(newShape)};
-                    Game->level.shapes.emplace_back(newShape, previewTexture);
-                }
-                Game->currentMode = Mode::editorNormal;
-            }
-        };
-        saveShapeButton.isVisible = visibleShapeModeOnly;
-
 #ifndef PLATFORM_WEB
         Running = true;
 #endif
+    }
+
+    bool MousePositionInGameScreen()
+    {
+        const auto [x, y]{GetMousePosition()};
+        return x < UI::GameWindowWidth && y < UI::GameWindowHeight;
     }
 
     void HandleInput()
     {
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
         {
-            for (const auto& button : Game->buttons)
+            if (Game->messageBoxState != MessageBoxState::none)
             {
-                if (::UI::IsButtonHovered(button))
-                {
-                    PlaySound(Game->fxButton);
-                    button.onPressed();
-                }
+                return;
+            }
+
+            if (!MousePositionInGameScreen())
+            {
+                return;
             }
 
             switch (Game->currentMode)
             {
-            case Mode::game:
-                {
-                }
-                break;
+            case Mode::game: break;
             case Mode::editorNormal:
                 {
                     const MapTile current{PixelToHex(Game->mousePosition)};
@@ -261,8 +179,6 @@ namespace
             const auto delta{GetMouseDelta()};
             Game->cameraGame.offset = Vector2Add(Game->cameraGame.offset, delta);
         }
-
-#ifdef _DEBUG
         if (IsKeyPressed(KEY_F2))
         {
             switch (Game->currentMode)
@@ -276,8 +192,6 @@ namespace
             default: ;
             }
         }
-#endif
-
         const auto delta{GetMouseWheelMove()};
 
         if (const auto newZoom{Game->cameraGame.zoom + delta};
@@ -303,7 +217,7 @@ namespace
         UpdateMusicStream(Game->music); // Update music buffer with new stream data
     }
 
-    void DrawMap(MapTiles& map)
+    void RenderMap(MapTiles& map)
     {
         const MapTile current{PixelToHex(Game->mousePosition)};
         for (const int row : MapTiles::iterator)
@@ -328,106 +242,299 @@ namespace
         }
     }
 
-    void DrawGameScreen()
+    void RenderGameScreen()
     {
         BeginMode2D(Game->cameraGame);
-
         switch (Game->currentMode)
         {
         case Mode::game:
+            ClearBackground(BLACK);
+            RenderMap(Game->level.tileMap);
+            break;
         case Mode::editorNormal:
-            DrawMap(Game->level.tileMap);
+            ClearBackground(DARKBLUE);
+            RenderMap(Game->level.tileMap);
             break;
         case Mode::editorAddShape:
-            DrawMap(Game->level.tempShape);
+            ClearBackground(BLUE);
+            RenderMap(Game->level.tempShape);
             break;
         }
         EndMode2D();
     }
 
-    void DrawUI()
+    void RenderUI()
     {
         BeginMode2D(Game->cameraUI);
 
         DrawRectangleRec(UI::LeftSideBar, LIGHTGRAY);
         DrawRectangleRec(UI::BottomSideBar, LIGHTGRAY);
         DrawRectangleRec(UI::MergeWindow, DARKGRAY);
-        DrawRectangleRec(UI::Quit,BROWN);
-        const Rectangle quitIconSource{
-            .x = 0,
-            .y = 0,
-            .width = static_cast<float>(Game->quitIcon.width),
-            .height = static_cast<float>(Game->quitIcon.height)
-        };
-        DrawTexturePro(Game->quitIcon, quitIconSource, UI::Quit, Vector2{0, 0}, 0.0f, WHITE);
-        for (const auto& button : Game->buttons)
-        {
-            UI::RenderButton(button);
-        }
 
         auto textPositionY{0};
         if (Game->currentMode == Mode::editorNormal)
         {
             DrawFPS(0, 0);
-            textPositionY += 16;
+            constexpr auto fpsTextSize{16};
+            textPositionY += fpsTextSize;
         }
-        float index{0};
-        for (const auto& tex : Game->level.shapes | std::views::values)
+        // Shapes
+        for (auto i{0uz}; i < Game->level.shapes.size(); ++i)
         {
+            const auto& tex{Game->level.shapes.at(i).second};
             const Rectangle source = {
                 .x = 0,
                 .y = 0,
                 .width = static_cast<float>(tex.texture.width),
                 .height = -static_cast<float>(tex.texture.height)
             };
-           
             constexpr auto scaleFactor{0.9f};
             constexpr auto indentValue{UI::LeftSideBar.width * (1.0f - scaleFactor) * 0.5f};
-            float initialOffset{indentValue};
+            float offsetY{indentValue};
             if (Game->currentMode != Mode::game)
             {
-                initialOffset = 40.f;
+                offsetY = UI::EDITOR_SaveShapeButton.height + UI::EDITOR_AddShapeButton.height;
             }
-
             const Rectangle dest = {
                 .x = UI::LeftSideBar.x + indentValue,
-                .y = UI::LeftSideBar.y + initialOffset + (index * UI::LeftSideBar.width),
+                .y = UI::LeftSideBar.y + offsetY + static_cast<float>(i) * (UI::LeftSideBar.width - indentValue),
                 .width = UI::LeftSideBar.width * scaleFactor,
                 .height = UI::LeftSideBar.width * scaleFactor,
             };
+
+            if (GuiButton(dest, "") > 0)
+            {
+                switch (Game->currentMode)
+                {
+                case Mode::game:
+                    {
+                        if (const auto selectedShape{static_cast<int>(i)}; Game->currentShape == selectedShape)
+                        {
+                            Game->currentShape = {};
+                        }
+                        else
+                        {
+                            Game->currentShape = selectedShape;
+                        }
+                    }
+                    break;
+                case Mode::editorNormal:
+                    {
+                        Game->currentShape = static_cast<int>(i);
+                        Game->messageBoxState = MessageBoxState::deleteShape;
+                    }
+                    break;
+                case Mode::editorAddShape: break;
+                }
+            }
+
             DrawTexturePro(tex.texture, source, dest, Vector2{.x = 0, .y = 0}, 0.0f, WHITE);
-            index++;
         }
 
+        // Spells
+        for (auto i{0uz}; i < Game->level.spells.size(); ++i)
+        {
+            const auto spell{Game->level.spells.at(i)};
+            constexpr auto scaleFactor{0.9f};
+            constexpr auto indentValue{UI::BottomSideBar.height * (1.0f - scaleFactor) * 0.5f};
+
+            const Rectangle dest = {
+                .x = UI::BottomSideBar.x + indentValue + static_cast<float>(i) * (UI::BottomSideBar.height -
+                    indentValue),
+                .y = UI::BottomSideBar.y + indentValue,
+                .width = UI::BottomSideBar.height * scaleFactor,
+                .height = UI::BottomSideBar.height * scaleFactor,
+            };
+
+            if (GuiButton(dest, "") > 0)
+            {
+                switch (Game->currentMode)
+                {
+                case Mode::game:
+                    {
+                        if (const auto selectedSpell{static_cast<int>(i)}; Game->currentSpell == selectedSpell)
+                        {
+                            Game->currentSpell = {};
+                        }
+                        else
+                        {
+                            Game->currentSpell = selectedSpell;
+                        }
+                    }
+                    break;
+                case Mode::editorNormal:
+                    {
+                        Game->currentSpell = static_cast<int>(i);
+                        Game->messageBoxState = MessageBoxState::deleteSpell;
+                    }
+                    break;
+                case Mode::editorAddShape: break;
+                }
+            }
+
+            DrawRectangleRec(dest, ToColor(spell));
+        }
+
+        if (Game->messageBoxState == MessageBoxState::deleteShape)
+        {
+            const auto result{
+                GuiMessageBox(UI::MessageBox,
+                              "",
+                              std::format("Do you want to delete the current shape?").c_str(),
+                              "YES;NO")
+            };
+            if (result == 1)
+            {
+                // DELETE
+                if (Game->currentShape.has_value())
+                {
+                    RemoveShapeAtIndex(Game->currentShape.value());
+                }
+
+                Game->messageBoxState = MessageBoxState::none;
+            }
+            if (result == 2)
+            {
+                Game->messageBoxState = MessageBoxState::none;
+            }
+        }
+
+        if (Game->messageBoxState == MessageBoxState::deleteSpell)
+        {
+            const auto result{
+                GuiMessageBox(UI::MessageBox,
+                              "",
+                              std::format("Do you want to delete the current spell?").c_str(),
+                              "YES;NO")
+            };
+            if (result == 1)
+            {
+                // DELETE
+                if (Game->currentSpell.has_value())
+                {
+                    RemoveSpellAtIndex(Game->currentSpell.value());
+                }
+
+                Game->messageBoxState = MessageBoxState::none;
+            }
+            if (result == 2)
+            {
+                Game->messageBoxState = MessageBoxState::none;
+            }
+        }
+
+        switch (Game->currentMode)
+        {
+        case Mode::game:
+            {
+                if (const auto currentShape{Game->currentShape}; currentShape.has_value())
+                {
+                    if (const auto index = currentShape.value(); index < Game->level.shapes.size())
+                    {
+                        const auto& tex{Game->level.shapes.at(index).second};
+                        const Rectangle source = {
+                            .x = 0,
+                            .y = 0,
+                            .width = static_cast<float>(tex.texture.width),
+                            .height = -static_cast<float>(tex.texture.height)
+                        };
+                        constexpr auto scaleFactor{0.9f};
+                        constexpr auto indentValue{UI::LeftSideBar.width * (1.0f - scaleFactor) * 0.5f};
+                        constexpr Rectangle dest = {
+                            .x = UI::MergeWindow.x + indentValue,
+                            .y = UI::MergeWindow.y + indentValue,
+                            .width = UI::MergeWindow.width * scaleFactor,
+                            .height = UI::MergeWindow.height * scaleFactor,
+                        };
+
+
+                        const Color mergeColor{
+                            Game->currentSpell.has_value()
+                                ? ToColor(Game->level.spells.at(Game->currentSpell.value()))
+                                : WHITE
+                        };
+                        DrawTexturePro(tex.texture, source, dest, Vector2{.x = 0, .y = 0}, 0.0f, mergeColor);
+                    }
+                }
+            }
+            break;
+        case Mode::editorNormal:
+            {
+                if (GuiButton(UI::EDITOR_AddShapeButton, "Add Shape") > 0)
+                {
+                    Game->level.tempShape.Init();
+                    Game->currentMode = Mode::editorAddShape;
+                }
+
+                for (const auto index : std::views::iota(0, static_cast<int>(Spell::count)))
+                {
+                    auto rect{UI::EDITOR_AddSpell};
+                    rect.x += static_cast<float>(index) * UI::GenericButtonWidth;
+                    if (const auto spell{static_cast<Spell>(index)};
+                        GuiButton(rect, ToString(spell)) > 0)
+                    {
+                        AddSpell(spell);
+                    }
+                }
+            }
+            break;
+        case Mode::editorAddShape:
+            {
+                if (GuiButton(UI::EDITOR_AddShapeButton, "Cancel") > 0)
+                {
+                    Game->currentMode = Mode::editorNormal;
+                }
+                if (GuiButton(UI::EDITOR_SaveShapeButton, "Save") > 0)
+                {
+                    Game->messageBoxState = MessageBoxState::saveShape;
+                }
+                if (Game->messageBoxState == MessageBoxState::saveShape)
+                {
+                    const auto result{
+                        GuiMessageBox(UI::MessageBox,
+                                      "Save",
+                                      "Do you want to save the current shape?",
+                                      "YES;NO")
+                    };
+                    if (result == 1) //YES
+                    {
+                        AddShape();
+                        Game->messageBoxState = MessageBoxState::none;
+                        Game->currentMode = Mode::editorNormal;
+                    }
+                    if (result == 2) //NO
+                    {
+                        Game->messageBoxState = MessageBoxState::none;
+                    }
+                    if (result > 0)
+                    {
+                        std::println("result, {}", result);
+                    }
+                }
+            }
+            break;
+        }
         DrawText(std::format("Mode: {}", ToString(Game->currentMode)).c_str(),
-                 0, textPositionY, 8, BLUE);
+                 0, textPositionY, 16, GREEN);
 
         EndMode2D();
     }
 
-    void DrawFrame()
+    void RenderFrame()
     {
         BeginDrawing();
-
-        ClearBackground(BLACK);
-
-        DrawGameScreen();
-        DrawUI();
-
+        RenderGameScreen();
+        RenderUI();
         EndDrawing();
     }
 
     //main game loop
     void Run()
     {
-        if (!Game)
-        {
-            return;
-        }
-
+        assert(Game);
         HandleInput();
         UpdateGame();
-        DrawFrame();
+        RenderFrame();
     }
 }
 

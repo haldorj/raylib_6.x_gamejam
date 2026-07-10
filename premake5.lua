@@ -13,6 +13,7 @@ debugdir "%{wks.location}"
 
 IncludeDir = {}
 IncludeDir["raylib"] = "%{prj.name}/external/raylib"
+IncludeDir["raygui"] = "%{prj.name}/external/raygui"
 
 project "game"
 	location "game"
@@ -53,6 +54,7 @@ project "game"
 	{
 		"%{prj.name}/src",
 		"%{IncludeDir.raylib}/include",
+		"%{IncludeDir.raygui}/",
 	}
 
 	libdirs 

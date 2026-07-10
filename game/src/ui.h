@@ -1,60 +1,52 @@
 ﻿#pragma once
+#include "game.h"
 
 namespace UI
 {
-    // button /////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    enum class ButtonType : std::uint8_t
-    {
-        none = 0,
-        addShape,
-        saveShape,
-        // Don't add enums past this one.
-        count // Max Buttons
-    };
-    
-    struct Button
-    {
-        std::function<void()> onPressed;
-        std::function<bool()> isVisible;
-        Rectangle rect;
-        std::string text;
-        int fontSize{8};
-        ButtonType type;
-    };
-    
-    void RenderButton(const Button& button);
-    bool IsButtonHovered(const Button& button);
-    bool IsButtonVisible(const Button& button);
-    
     // UI ELEMENTS ////////////////////////////////////////////////////////////////////////////////////////////////////
-    
+
+    constexpr Vector2 ScreenCenter{
+        .x = WindowWidth * 0.5,
+        .y = WindowHeight * 0.5,
+    };
+
+    // GenericButton
+    inline constexpr auto GenericButtonHeight{24.0f};
+    inline constexpr auto GenericButtonWidth{64.0f};
+    // MessageBox
+    inline constexpr auto MessageBoxWidth{250};
+    inline constexpr auto MessageBoxHeight{100};
+    inline constexpr Rectangle MessageBox{
+        .x = ScreenCenter.x - (MessageBoxWidth * 0.5f),
+        .y = ScreenCenter.y - (MessageBoxHeight * 0.5f),
+        .width = MessageBoxWidth,
+        .height = MessageBoxHeight
+    };
+
+    inline constexpr auto GameWindowWidth{580.0f};
+    inline constexpr auto GameWindowHeight{580.0f};
+
     // Left sidebar
     // Displays hex-shapes
-    inline constexpr auto LeftSideBarHeight{0.8f};
-    inline constexpr auto LeftSideBarWidth{1.0f - LeftSideBarHeight};
     inline constexpr Rectangle LeftSideBar{
-        .x = static_cast<float>(GamePixelHeight) * LeftSideBarHeight,
+        .x = GameWindowWidth,
         .y = 0.0f,
-        .width = static_cast<float>(GamePixelHeight) * LeftSideBarWidth,
-        .height = static_cast<float>(GamePixelHeight)
+        .width = WindowWidth - GameWindowWidth,
+        .height = WindowHeight
     };
 
-    
     // Bottom sidebar
     // Displays elements
-    inline constexpr auto BottomSideBarWidth{0.8f};
-    inline constexpr auto BottomSideBarHeight{1.0f - BottomSideBarWidth};
     inline constexpr Rectangle BottomSideBar{
         .x = 0.0f,
-        .y = static_cast<float>(GamePixelHeight) * BottomSideBarWidth,
-        .width = static_cast<float>(GamePixelHeight),
-        .height = static_cast<float>(GamePixelHeight) * BottomSideBarHeight
+        .y = GameWindowHeight,
+        .width = WindowHeight,
+        .height = WindowWidth - GameWindowWidth
     };
-    
-    inline constexpr auto CameraStartPositionRelativeToUI = Vector2{
-        .x = (WindowWidth * LeftSideBarHeight)/2.0f,
-        .y = (WindowHeight * LeftSideBarHeight)/2.0f,
+
+    inline constexpr auto GameCameraStartPosition = Vector2{
+        .x = GameWindowWidth / 2.0f,
+        .y = GameWindowHeight / 2.0f,
     };
 
     // MergeWindow
@@ -63,33 +55,33 @@ namespace UI
     inline constexpr auto MergeWindowOffset{1.0f - MergeWindowWidth};
 
     inline constexpr Rectangle MergeWindow{
-        .x = static_cast<float>(GamePixelHeight) * MergeWindowOffset,
-        .y = static_cast<float>(GamePixelHeight) * MergeWindowOffset,
-        .width = static_cast<float>(GamePixelHeight) * MergeWindowWidth,
-        .height = static_cast<float>(GamePixelHeight) * MergeWindowWidth
+        .x = static_cast<float>(WindowWidth) * MergeWindowOffset,
+        .y = static_cast<float>(WindowHeight) * MergeWindowOffset,
+        .width = static_cast<float>(WindowWidth) * MergeWindowWidth,
+        .height = static_cast<float>(WindowHeight) * MergeWindowWidth
     };
-    
-    inline constexpr auto QuitbuttonX{0.5f * LeftSideBarWidth};
-    inline constexpr auto QuitbuttonY{0.5f * BottomSideBarWidth};
-    inline constexpr Rectangle Quit{
-        .x = QuitbuttonX, 
-        .y = QuitbuttonY,
-        .width = 100,
-        .height = 50,
-    };
+
     // Add Button (Editor mode)
     inline constexpr Rectangle EDITOR_AddShapeButton{
         .x = LeftSideBar.x,
         .y = LeftSideBar.y,
         .width = LeftSideBar.width,
-        .height = 16.f,
+        .height = GenericButtonHeight,
     };
-    
+
     // Save shape
     inline constexpr Rectangle EDITOR_SaveShapeButton{
         .x = LeftSideBar.x,
-        .y = LeftSideBar.y + 18.f,
+        .y = LeftSideBar.y + GenericButtonHeight,
         .width = LeftSideBar.width,
-        .height = EDITOR_AddShapeButton.height,
+        .height = GenericButtonHeight,
+    };
+
+    // AddSpellButton
+    inline constexpr Rectangle EDITOR_AddSpell{
+        .x = 0,
+        .y = GameWindowHeight - GenericButtonHeight,
+        .width = GenericButtonWidth,
+        .height = GenericButtonHeight,
     };
 }
