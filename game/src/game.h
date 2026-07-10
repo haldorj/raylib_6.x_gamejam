@@ -66,7 +66,7 @@ struct GameMemory
     std::optional<int> currentSpell;
 
     MessageBoxState messageBoxState{MessageBoxState::none};
-    Mode currentMode{Mode::game};
+    Mode mode{Mode::game};
 };
 
 constexpr const char* ToString(const Mode mode)
