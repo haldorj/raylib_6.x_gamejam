@@ -1,6 +1,14 @@
 ﻿#include "pch.h"
 #include "impl.h"
-#pragma warning(push, 0)     
-#define RAYGUI_IMPLEMENTATION
-#include <raygui.h>
-#pragma warning(pop)
+
+#ifndef PLATFORM_WEB
+	#define RAYGUI_IMPLEMENTATION
+	#pragma warning(push, 0)
+	#include <raygui.h>
+	#pragma warning(pop)
+#endif
+
+#ifdef PLATFORM_WEB
+	#define RAYGUI_IMPLEMENTATION
+	#include <raygui.h>
+#endif

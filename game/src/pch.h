@@ -10,6 +10,7 @@
 #include <string>
 #include <string_view>
 #include <print>
+#include <optional>
 
 #ifdef PLATFORM_WEB
 #include <emscripten/emscripten.h>      // Emscripten library
@@ -17,9 +18,15 @@
 
 #include <raylib.h>
 #include <raymath.h>
-#pragma warning(push, 0)     
-#include <raygui.h>
-#pragma warning( pop )
+#ifndef PLATFORM_WEB
+    #pragma warning(push, 0)
+    #include <raygui.h>
+    #pragma warning(pop)
+#endif
+
+#ifdef PLATFORM_WEB
+    #include <raygui.h>
+#endif
 
 constexpr auto WindowWidth{720.0f};
 constexpr auto WindowHeight{720.0f};
