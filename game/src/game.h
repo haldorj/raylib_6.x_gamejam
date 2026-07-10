@@ -62,8 +62,8 @@ struct GameMemory
     Sound fxButton{};
     Texture2D hexagon{};
 
-    std::optional<int> currentShape;
-    std::optional<int> currentSpell;
+    std::optional<int> currentShapeIdx;
+    std::optional<int> currentSpellIdx;
 
     MessageBoxState messageBoxState{MessageBoxState::none};
     Mode mode{Mode::game};

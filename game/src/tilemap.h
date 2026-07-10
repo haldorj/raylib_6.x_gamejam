@@ -24,6 +24,7 @@ public:
     auto Init() -> void;
 
     auto At(int row, int col) -> MapTile&;
+    auto ValidIndex(int row, int col) -> bool;
     auto SetValid(int row, int col) -> void;
     auto IsEmpty() -> bool;
 
@@ -32,7 +33,5 @@ public:
     static constexpr auto iterator{std::views::iota(-MaxTilesFromCenter, MaxTilesFromCenter)};
     
 private:
-    static auto ValidIndex(int row, int col) -> bool;
-    
     std::array<MapTile, MapSize> m_map = {};
 };

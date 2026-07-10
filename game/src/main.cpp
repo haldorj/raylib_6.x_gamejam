@@ -240,16 +240,44 @@ namespace
         }
     }
 
+    auto CheckShapeCollisionWithMap(MapTiles& map) -> bool
+    {
+        const auto index{Game->currentShapeIdx};
+        const auto mousePos{PixelToHex(Game->mousePosition)};
+        if (!index.has_value())
+        {
+            return false;
+        }
+        for (const auto shape : Game->level.shapes.at(index.value()).first)
+        {
+            const auto adjustedRow{shape.row + mousePos.row};
+            const auto adjustedCol{shape.col + mousePos.col};
+            if (!map.ValidIndex(adjustedRow, adjustedCol))
+            {
+                return false;
+            }
+            if (!map.At(adjustedRow, adjustedCol).isValid)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     auto RenderCurrentShape(MapTiles& map, const Mode mode)
     {
         const auto mousePos{PixelToHex(Game->mousePosition)};
         auto hexAtMousePos{HexToPixel(mousePos.row, mousePos.col)};
         hexAtMousePos.x -= static_cast<float>(HexagonSize);
         hexAtMousePos.y -= static_cast<float>(HexagonSize);
-        
+
         auto renderSingleHex{
             [&map, hexAtMousePos, mousePos]
             {
+                if (!map.ValidIndex(mousePos.row, mousePos.col))
+                {
+                    return;
+                }
                 const auto color = map.At(mousePos.row, mousePos.col).isValid ? RED : GREEN;
                 DrawTextureEx(Game->hexagon, hexAtMousePos, 0.f, 1.0f, color);
             }
@@ -259,13 +287,14 @@ namespace
         {
         case Mode::game:
             {
-                if (Game->currentShape.has_value())
+                if (Game->currentShapeIdx.has_value())
                 {
-                    const auto index{static_cast<size_t>(Game->currentShape.value())};
+                    const auto index{static_cast<size_t>(Game->currentShapeIdx.value())};
                     for (auto const& shape : Game->level.shapes.at(index).first)
                     {
                         const auto hex{HexToPixel(shape.row, shape.col)};
-                        DrawTextureEx(Game->hexagon, Vector2Add(hex, hexAtMousePos), 0.f, 1.0f, GREEN);
+                        const auto color{CheckShapeCollisionWithMap(map) ? GREEN : RED};
+                        DrawTextureEx(Game->hexagon, Vector2Add(hex, hexAtMousePos), 0.f, 1.0f, color);
                     }
                 }
                 else
@@ -366,9 +395,9 @@ namespace
             if (result == 1)
             {
                 // DELETE
-                if (Game->currentShape.has_value())
+                if (Game->currentShapeIdx.has_value())
                 {
-                    RemoveShapeAtIndex(Game->currentShape.value());
+                    RemoveShapeAtIndex(Game->currentShapeIdx.value());
                 }
 
                 Game->messageBoxState = MessageBoxState::none;
@@ -390,9 +419,9 @@ namespace
             if (result == 1)
             {
                 // DELETE
-                if (Game->currentSpell.has_value())
+                if (Game->currentSpellIdx.has_value())
                 {
-                    RemoveSpellAtIndex(Game->currentSpell.value());
+                    RemoveSpellAtIndex(Game->currentSpellIdx.value());
                 }
 
                 Game->messageBoxState = MessageBoxState::none;
@@ -406,7 +435,7 @@ namespace
 
     auto RenderMergeWindow() -> void
     {
-        const auto currentShape{Game->currentShape};
+        const auto currentShape{Game->currentShapeIdx};
         if (!currentShape.has_value())
         {
             return;
@@ -431,8 +460,8 @@ namespace
             };
 
             const Color mergeColor{
-                Game->currentSpell.has_value()
-                    ? ToColor(Game->level.spells.at(Game->currentSpell.value()))
+                Game->currentSpellIdx.has_value()
+                    ? ToColor(Game->level.spells.at(Game->currentSpellIdx.value()))
                     : WHITE
             };
             DrawTexturePro(tex.texture, source, dest, Vector2{.x = 0, .y = 0}, 0.0f, mergeColor);
@@ -473,19 +502,19 @@ namespace
                 {
                 case Mode::game:
                     {
-                        if (const auto selectedShape{static_cast<int>(i)}; Game->currentShape == selectedShape)
+                        if (const auto selectedShape{static_cast<int>(i)}; Game->currentShapeIdx == selectedShape)
                         {
-                            Game->currentShape = {};
+                            Game->currentShapeIdx = {};
                         }
                         else
                         {
-                            Game->currentShape = selectedShape;
+                            Game->currentShapeIdx = selectedShape;
                         }
                     }
                     break;
                 case Mode::editorNormal:
                     {
-                        Game->currentShape = static_cast<int>(i);
+                        Game->currentShapeIdx = static_cast<int>(i);
                         Game->messageBoxState = MessageBoxState::deleteShape;
                     }
                     break;
@@ -522,19 +551,19 @@ namespace
                 {
                 case Mode::game:
                     {
-                        if (const auto selectedSpell{static_cast<int>(i)}; Game->currentSpell == selectedSpell)
+                        if (const auto selectedSpell{static_cast<int>(i)}; Game->currentSpellIdx == selectedSpell)
                         {
-                            Game->currentSpell = {};
+                            Game->currentSpellIdx = {};
                         }
                         else
                         {
-                            Game->currentSpell = selectedSpell;
+                            Game->currentSpellIdx = selectedSpell;
                         }
                     }
                     break;
                 case Mode::editorNormal:
                     {
-                        Game->currentSpell = static_cast<int>(i);
+                        Game->currentSpellIdx = static_cast<int>(i);
                         Game->messageBoxState = MessageBoxState::deleteSpell;
                     }
                     break;
