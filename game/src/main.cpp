@@ -1,7 +1,5 @@
 #include "pch.h"
 
-#include <print>
-
 #include "ui.h"
 #include "tilemap.h"
 
@@ -25,6 +23,13 @@ namespace
         std::vector<std::pair<shape, RenderTexture>> shapes;
     };
 
+    enum struct MessageBoxState
+    {
+        none,
+        saveShape,
+        deleteShape,
+    };
+
     struct GameMemory
     {
         Level level;
@@ -40,7 +45,7 @@ namespace
         Sound fxButton{};
 
         Mode currentMode{Mode::game};
-        bool showMessageBox{false};
+        MessageBoxState messageBoxState{MessageBoxState::none};
     };
 
     std::unique_ptr<GameMemory> Game;
@@ -121,16 +126,12 @@ namespace
         return renderTexture;
     }
 
-    void AddShape()
-    {
-    }
-
     void Init()
     {
 #ifndef _DEBUG
         SetTraceLogLevel(LOG_NONE); // Disable raylib trace log messages
 #endif
-        InitWindow(WindowWidth, WindowHeight, "");
+        InitWindow(static_cast<int>(WindowWidth), static_cast<int>(WindowHeight), "");
         SetTargetFPS(TargetFps);
         InitAudioDevice();
 
@@ -138,9 +139,10 @@ namespace
         Game->hexagon = LoadTexture("assets/textures/flathex.png");
 
         // Game Camera
+        constexpr auto gamePixelHeight{180.f};
         Game->cameraGame.offset = UI::CameraStartPositionRelativeToUI;
+        Game->cameraGame.zoom = static_cast<float>(GetScreenHeight()) / gamePixelHeight;
         // UI Camera
-        Game->cameraGame.zoom = static_cast<float>(GetScreenHeight()) / GamePixelHeight;
         Game->cameraUI.zoom = 1.0f; // no scale;
 
         Game->music = LoadMusicStream("assets/Music/Goblins_Dance_(Battle).wav");
@@ -158,15 +160,26 @@ namespace
 #endif
     }
 
+    bool MousePositionInGameScreen()
+    {
+        const auto [x, y]{GetMousePosition()};
+        return x < UI::GameWindowWidth && y < UI::GameWindowHeight;
+    }
+
     void HandleInput()
     {
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
         {
-            if (Game->showMessageBox)
+            if (Game->messageBoxState != MessageBoxState::none)
             {
                 return;
             }
-            
+
+            if (!MousePositionInGameScreen())
+            {
+                return;
+            }
+
             switch (Game->currentMode)
             {
             case Mode::game:
@@ -262,7 +275,6 @@ namespace
     void RenderGameScreen()
     {
         BeginMode2D(Game->cameraGame);
-
         switch (Game->currentMode)
         {
         case Mode::game:
@@ -270,6 +282,7 @@ namespace
             RenderMap(Game->level.tileMap);
             break;
         case Mode::editorAddShape:
+            ClearBackground(BLUE);
             RenderMap(Game->level.tempShape);
             break;
         }
@@ -290,7 +303,7 @@ namespace
             DrawFPS(0, 0);
             textPositionY += 16;
         }
-        float index{0};
+        auto index{0};
         for (const auto& tex : Game->level.shapes | std::views::values)
         {
             const Rectangle source = {
@@ -305,15 +318,54 @@ namespace
             float initialOffset{indentValue};
             if (Game->currentMode != Mode::game)
             {
-                initialOffset = 40.f;
+                initialOffset = UI::EDITOR_SaveShapeButton.height + UI::EDITOR_AddShapeButton.height;
             }
 
             const Rectangle dest = {
                 .x = UI::LeftSideBar.x + indentValue,
-                .y = UI::LeftSideBar.y + initialOffset + (index * UI::LeftSideBar.width),
+                .y = UI::LeftSideBar.y + initialOffset + (static_cast<float>(index) * UI::LeftSideBar.width),
                 .width = UI::LeftSideBar.width * scaleFactor,
                 .height = UI::LeftSideBar.width * scaleFactor,
             };
+            static auto currentIndex{0};
+            if (GuiButton(dest, "") > 0)
+            {
+                switch (Game->currentMode)
+                {
+                case Mode::game:
+                    {
+                        // TODO: Select and merge
+                    }
+                    break;
+                case Mode::editorNormal:
+                    {
+                        currentIndex = index;
+                        Game->messageBoxState = MessageBoxState::deleteShape;
+                    }
+                    break;
+                case Mode::editorAddShape: break;
+                }
+            }
+
+            if (Game->messageBoxState == MessageBoxState::deleteShape)
+            {
+                const auto result{
+                    GuiMessageBox(UI::MessageBox,
+                                  "Save",
+                                  std::format("Do you want to delete the current shape? ({})", currentIndex).c_str(),
+                                  "YES;NO")
+                };
+                if (result == 1)
+                {
+                    // DELETE
+                    Game->messageBoxState = MessageBoxState::none;
+                }
+                if (result == 2)
+                {
+                    Game->messageBoxState = MessageBoxState::none;
+                }
+            }
+
             DrawTexturePro(tex.texture, source, dest, Vector2{.x = 0, .y = 0}, 0.0f, WHITE);
             index++;
         }
@@ -341,9 +393,9 @@ namespace
                 }
                 if (GuiButton(UI::EDITOR_SaveShapeButton, "Save"))
                 {
-                    Game->showMessageBox = true;
+                    Game->messageBoxState = MessageBoxState::saveShape;
                 }
-                if (Game->showMessageBox)
+                if (Game->messageBoxState == MessageBoxState::saveShape)
                 {
                     const auto result{
                         GuiMessageBox(UI::MessageBox,
@@ -359,12 +411,16 @@ namespace
                             const auto previewTexture{GeneratePreviewTexture(newShape)};
                             Game->level.shapes.emplace_back(newShape, previewTexture);
                         }
-                        Game->showMessageBox = false;
+                        Game->messageBoxState = MessageBoxState::none;
                         Game->currentMode = Mode::editorNormal;
                     }
                     if (result == 2) //NO
                     {
-                        Game->showMessageBox = false;
+                        Game->messageBoxState = MessageBoxState::none;
+                    }
+                    if (result > 0)
+                    {
+                        std::println("result, {}", result);
                     }
                 }
             }

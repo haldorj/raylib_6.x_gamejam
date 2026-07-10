@@ -5,14 +5,14 @@ namespace UI
     // UI ELEMENTS ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     constexpr Vector2 ScreenCenter{
-        .x = GamePixelHeight * 0.5,
-        .y = GamePixelHeight * 0.5,
+        .x = WindowWidth * 0.5,
+        .y = WindowHeight * 0.5,
     };
 
     // GenericButton
-    inline constexpr auto GenericButtonHeight{16.0f};
+    inline constexpr auto GenericButtonHeight{24.0f};
     inline constexpr auto GenericButtonWidth{64.0f};
-    // Prompt window
+    // MessageBox
     inline constexpr auto MessageBoxWidth{250};
     inline constexpr auto MessageBoxHeight{100};
     inline constexpr Rectangle MessageBox{
@@ -21,46 +21,31 @@ namespace UI
         .width = MessageBoxWidth,
         .height = MessageBoxHeight
     };
-    // Prompt accept
-    // inline constexpr Rectangle PromptAccept{
-    //     .x = PromptWindowRect.x + MessageBoxWidth * 0.25f,
-    //     .y = PromptWindowRect.height - GenericButtonHeight,
-    //     .width = GenericButtonWidth,
-    //     .height = GenericButtonHeight,
-    // };
-    // // Prompt cancel
-    // inline constexpr Rectangle PromptCancel{
-    //     .x = PromptWindowRect.width * 0.5f + GenericButtonWidth * 0.5f,
-    //     .y = PromptWindowRect.height - GenericButtonHeight,
-    //     .width = GenericButtonWidth,
-    //     .height = GenericButtonHeight
-    // };
 
+    inline constexpr auto GameWindowWidth{580.0f};
+    inline constexpr auto GameWindowHeight{580.0f};
+    
     // Left sidebar
     // Displays hex-shapes
-    inline constexpr auto LeftSideBarHeight{0.8f};
-    inline constexpr auto LeftSideBarWidth{1.0f - LeftSideBarHeight};
     inline constexpr Rectangle LeftSideBar{
-        .x = static_cast<float>(GamePixelHeight) * LeftSideBarHeight,
+        .x = GameWindowWidth,
         .y = 0.0f,
-        .width = static_cast<float>(GamePixelHeight) * LeftSideBarWidth,
-        .height = static_cast<float>(GamePixelHeight)
+        .width = WindowWidth - GameWindowWidth,
+        .height = WindowHeight
     };
     
     // Bottom sidebar
     // Displays elements
-    inline constexpr auto BottomSideBarWidth{0.8f};
-    inline constexpr auto BottomSideBarHeight{1.0f - BottomSideBarWidth};
     inline constexpr Rectangle BottomSideBar{
         .x = 0.0f,
-        .y = static_cast<float>(GamePixelHeight) * BottomSideBarWidth,
-        .width = static_cast<float>(GamePixelHeight),
-        .height = static_cast<float>(GamePixelHeight) * BottomSideBarHeight
+        .y = GameWindowHeight,
+        .width = WindowHeight,
+        .height = WindowWidth - GameWindowWidth
     };
 
     inline constexpr auto CameraStartPositionRelativeToUI = Vector2{
-        .x = (WindowWidth * LeftSideBarHeight) / 2.0f,
-        .y = (WindowHeight * LeftSideBarHeight) / 2.0f,
+        .x = GameWindowWidth / 2.0f,
+        .y = GameWindowHeight / 2.0f,
     };
 
     // MergeWindow
@@ -69,10 +54,10 @@ namespace UI
     inline constexpr auto MergeWindowOffset{1.0f - MergeWindowWidth};
 
     inline constexpr Rectangle MergeWindow{
-        .x = static_cast<float>(GamePixelHeight) * MergeWindowOffset,
-        .y = static_cast<float>(GamePixelHeight) * MergeWindowOffset,
-        .width = static_cast<float>(GamePixelHeight) * MergeWindowWidth,
-        .height = static_cast<float>(GamePixelHeight) * MergeWindowWidth
+        .x = static_cast<float>(WindowWidth) * MergeWindowOffset,
+        .y = static_cast<float>(WindowHeight) * MergeWindowOffset,
+        .width = static_cast<float>(WindowWidth) * MergeWindowWidth,
+        .height = static_cast<float>(WindowHeight) * MergeWindowWidth
     };
 
     // Add Button (Editor mode)
@@ -80,14 +65,14 @@ namespace UI
         .x = LeftSideBar.x,
         .y = LeftSideBar.y,
         .width = LeftSideBar.width,
-        .height = 16.f,
+        .height = GenericButtonHeight,
     };
 
     // Save shape
     inline constexpr Rectangle EDITOR_SaveShapeButton{
         .x = LeftSideBar.x,
-        .y = LeftSideBar.y + 18.f,
+        .y = LeftSideBar.y + GenericButtonHeight,
         .width = LeftSideBar.width,
-        .height = EDITOR_AddShapeButton.height,
+        .height = GenericButtonHeight,
     };
 }
