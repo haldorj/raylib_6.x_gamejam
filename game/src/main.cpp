@@ -10,6 +10,8 @@ namespace
 #ifndef PLATFORM_WEB
     bool Running;
 #endif
+    auto MasterVolume{0.5f};
+    auto MusicVolume{1.0f};
 
     auto HexToPixel(const int row, const int column) -> Vector2
     {
@@ -130,6 +132,11 @@ namespace
         Game->cameraUI.zoom = 1.0f; // no scale;
 
         Game->music = LoadMusicStream("assets/Music/Goblins_Dance_(Battle).wav");
+#ifdef _DEBUG
+        SetMusicVolume(Game->music, 0.0f);
+#elif
+        SetMusicVolume(Game->music, MasterVolume * MusicVolume);
+#endif
         Game->fxButton = LoadSound("assets/Sound effects/UI sounds/menu_blip.wav");
 
         // float timePlayed = 0.0f; // Time played normalized [0.0f..1.0f]
@@ -144,11 +151,25 @@ namespace
 #endif
     }
 
+    // auto PlaceCurrentShape() -> void
+    // {
+    //     const MapTile current{PixelToHex(Game->mousePosition)};
+    //     if (Game->currentShape.has_value())
+    //     {
+    //         const auto shapeIndex{static_cast<size_t>(Game->currentShape.value())};
+    //         const auto& currentShape{Game->level.shapes.at(shapeIndex)};
+    //     }
+    // }
+
     auto HandleClickGameScreen() -> auto
     {
         switch (Game->mode)
         {
-        case Mode::game: break;
+        case Mode::game:
+            {
+                //PlaceCurrentShape();
+            }
+            break;
         case Mode::editorNormal:
             {
                 const MapTile current{PixelToHex(Game->mousePosition)};
@@ -164,7 +185,7 @@ namespace
         }
     }
 
-    auto ToggleGameMode() -> void
+    auto SwapGameAndEditorMode() -> void
     {
         switch (Game->mode)
         {
@@ -200,7 +221,7 @@ namespace
         }
         if (IsKeyPressed(KEY_F2))
         {
-            ToggleGameMode();
+            SwapGameAndEditorMode();
         }
         const auto delta{GetMouseWheelMove()};
 
@@ -219,9 +240,55 @@ namespace
         }
     }
 
+    auto RenderCurrentShape(MapTiles& map, const Mode mode)
+    {
+        const auto mousePos{PixelToHex(Game->mousePosition)};
+        auto hexAtMousePos{HexToPixel(mousePos.row, mousePos.col)};
+        hexAtMousePos.x -= static_cast<float>(HexagonSize);
+        hexAtMousePos.y -= static_cast<float>(HexagonSize);
+        
+        auto renderSingleHex{
+            [&map, hexAtMousePos, mousePos]
+            {
+                const auto color = map.At(mousePos.row, mousePos.col).isValid ? RED : GREEN;
+                DrawTextureEx(Game->hexagon, hexAtMousePos, 0.f, 1.0f, color);
+            }
+        };
+
+        switch (mode)
+        {
+        case Mode::game:
+            {
+                if (Game->currentShape.has_value())
+                {
+                    const auto index{static_cast<size_t>(Game->currentShape.value())};
+                    for (auto const& shape : Game->level.shapes.at(index).first)
+                    {
+                        const auto hex{HexToPixel(shape.row, shape.col)};
+                        DrawTextureEx(Game->hexagon, Vector2Add(hex, hexAtMousePos), 0.f, 1.0f, GREEN);
+                    }
+                }
+                else
+                {
+                    renderSingleHex();
+                }
+            }
+            break;
+        case Mode::editorNormal:
+            {
+                renderSingleHex();
+            }
+            break;
+        case Mode::editorAddShape:
+            {
+                renderSingleHex();
+            }
+            break;
+        }
+    }
+
     auto RenderMap(MapTiles& map) -> void
     {
-        const MapTile current{PixelToHex(Game->mousePosition)};
         for (const int row : MapTiles::iterator)
         {
             for (const int col : MapTiles::iterator)
@@ -230,15 +297,9 @@ namespace
                 pos.x -= static_cast<float>(HexagonSize);
                 pos.y -= static_cast<float>(HexagonSize);
 
-                auto color = WHITE;
-                if (row == current.row && col == current.col)
-                {
-                    color = map.At(row, col).isValid ? RED : GREEN;
-                    DrawTextureEx(Game->hexagon, pos, 0.f, 1.0f, color);
-                }
                 if (map.At(row, col).isValid)
                 {
-                    DrawTextureEx(Game->hexagon, pos, 0.f, 1.0f, color);
+                    DrawTextureEx(Game->hexagon, pos, 0.f, 1.0f, WHITE);
                 }
             }
         }
@@ -252,14 +313,17 @@ namespace
         case Mode::game:
             ClearBackground(BLACK);
             RenderMap(Game->level.tileMap);
+            RenderCurrentShape(Game->level.tileMap, Mode::game);
             break;
         case Mode::editorNormal:
             ClearBackground(DARKBLUE);
             RenderMap(Game->level.tileMap);
+            RenderCurrentShape(Game->level.tileMap, Mode::editorNormal);
             break;
         case Mode::editorAddShape:
             ClearBackground(BLUE);
             RenderMap(Game->level.tempShape);
+            RenderCurrentShape(Game->level.tempShape, Mode::editorAddShape);
             break;
         }
         EndMode2D();

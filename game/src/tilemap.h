@@ -21,18 +21,18 @@ struct MapTile
 class MapTiles
 {
 public:
-    void Init();
+    auto Init() -> void;
 
-    MapTile& At(int row, int col);
-    void SetValid(int row, int col);
-    bool IsEmpty();
-    
-    std::vector<MapTile> ValidTiles();
+    auto At(int row, int col) -> MapTile&;
+    auto SetValid(int row, int col) -> void;
+    auto IsEmpty() -> bool;
+
+    auto ValidTiles() -> std::vector<MapTile>;
 
     static constexpr auto iterator{std::views::iota(-MaxTilesFromCenter, MaxTilesFromCenter)};
     
 private:
-    static bool ValidIndex(int row, int col);
+    static auto ValidIndex(int row, int col) -> bool;
     
     std::array<MapTile, MapSize> m_map = {};
 };
