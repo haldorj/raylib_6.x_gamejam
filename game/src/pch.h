@@ -27,13 +27,3 @@
 #ifdef PLATFORM_WEB
     #include <raygui.h>
 #endif
-
-constexpr auto WindowWidth{720.0f};
-constexpr auto WindowHeight{720.0f};
-
-constexpr auto TargetFps{120};
-
-constexpr auto MinCameraZoom{2.0f};
-constexpr auto MaxCameraZoom{8.0f};
-
-constexpr auto HexagonSize{8.0};

@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "game.h"
 
 namespace UI
 {
@@ -24,7 +25,7 @@ namespace UI
 
     inline constexpr auto GameWindowWidth{580.0f};
     inline constexpr auto GameWindowHeight{580.0f};
-    
+
     // Left sidebar
     // Displays hex-shapes
     inline constexpr Rectangle LeftSideBar{
@@ -33,7 +34,7 @@ namespace UI
         .width = WindowWidth - GameWindowWidth,
         .height = WindowHeight
     };
-    
+
     // Bottom sidebar
     // Displays elements
     inline constexpr Rectangle BottomSideBar{
@@ -43,7 +44,7 @@ namespace UI
         .height = WindowWidth - GameWindowWidth
     };
 
-    inline constexpr auto CameraStartPositionRelativeToUI = Vector2{
+    inline constexpr auto GameCameraStartPosition = Vector2{
         .x = GameWindowWidth / 2.0f,
         .y = GameWindowHeight / 2.0f,
     };
@@ -73,6 +74,14 @@ namespace UI
         .x = LeftSideBar.x,
         .y = LeftSideBar.y + GenericButtonHeight,
         .width = LeftSideBar.width,
+        .height = GenericButtonHeight,
+    };
+
+    // AddSpellButton
+    inline constexpr Rectangle EDITOR_AddSpell{
+        .x = 0,
+        .y = GameWindowHeight - GenericButtonHeight,
+        .width = GenericButtonWidth,
         .height = GenericButtonHeight,
     };
 }

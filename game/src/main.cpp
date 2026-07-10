@@ -2,94 +2,14 @@
 
 #include "ui.h"
 #include "tilemap.h"
+#include "game.h"
 
 namespace
 {
-    enum class Mode : uint8_t
-    {
-        game,
-        editorNormal,
-        editorAddShape,
-    };
-    
-    enum class MessageBoxState : uint8_t
-    {
-        none,
-        saveShape,
-        deleteShape,
-    };
-    
-    enum class Spell : uint8_t
-    {
-        fire,
-        sickness,
-        death,
-        fear,
-        obsession,
-    };
-
-
-
-    // TODO: support saving and loading this struct
-    struct Level
-    {
-        using shape = std::vector<MapTile>;
-        // Level data
-        MapTiles tileMap; // Main level
-        MapTiles tempShape; // Shape editor level
-        std::vector<std::pair<shape, RenderTexture>> shapes;
-        std::vector<Spell> spells;
-    };
-    
-    struct GameMemory
-    {
-        Level level;
-
-        Music music{};
-
-        Camera2D cameraGame{};
-        Camera2D cameraUI{};
-        Vector2 mousePosition{};
-
-        // TODO: make arrays for assets
-        Sound fxButton{};
-        Texture2D hexagon{};
-
-        Mode currentMode{Mode::game};
-        std::optional<int> currentShape;
-        std::optional<int> currentElement;
-        MessageBoxState messageBoxState{MessageBoxState::none};
-    };
-
     std::unique_ptr<GameMemory> Game;
-
 #ifndef PLATFORM_WEB
     bool Running;
 #endif
-
-    constexpr const char* ToString(const Mode mode)
-    {
-        switch (mode)
-        {
-        case Mode::game: return "GAME";
-        case Mode::editorNormal: return "EDITOR";
-        case Mode::editorAddShape: return "ADD SHAPE";
-        }
-        return "UNKNOWN";
-    }
-    
-    constexpr const char* ToString(const Spell spell)
-    {
-        switch (spell)
-        {
-        case Spell::fire: return "fire";
-        case Spell::sickness: return "sickness";
-        case Spell::death: return "death";
-        case Spell::fear: return "fear";
-        case Spell::obsession: return "obsession";
-        }
-        return "unknown";
-    }
 
     Vector2 HexToPixel(const int row, const int column)
     {
@@ -111,8 +31,8 @@ namespace
         const auto col{2.0 / 3 * x};
         const auto row{-1.0 / 3 * x + std::numbers::sqrt3 / 3 * y};
         const auto result = MapTile{
-            .row = static_cast<int>(std::round(row)),
-            .col = static_cast<int>(std::round(col))
+            .row = static_cast<int8_t>(std::round(row)),
+            .col = static_cast<int8_t>(std::round(col))
         };
         return result;
     }
@@ -169,6 +89,19 @@ namespace
         }
     }
 
+    void AddSpell(const Spell spell)
+    {
+        Game->level.spells.push_back(spell);
+    }
+
+    void RemoveSpellAtIndex(const size_t index)
+    {
+        if (auto& spells{Game->level.spells}; index < spells.size())
+        {
+            spells.erase(spells.begin() + static_cast<int>(index));
+        }
+    }
+
     void Init()
     {
 #ifndef _DEBUG
@@ -183,7 +116,7 @@ namespace
 
         // Game Camera
         constexpr auto gamePixelHeight{180.f};
-        Game->cameraGame.offset = UI::CameraStartPositionRelativeToUI;
+        Game->cameraGame.offset = UI::GameCameraStartPosition;
         Game->cameraGame.zoom = static_cast<float>(GetScreenHeight()) / gamePixelHeight;
         // UI Camera
         Game->cameraUI.zoom = 1.0f; // no scale;
@@ -345,6 +278,7 @@ namespace
             constexpr auto fpsTextSize{16};
             textPositionY += fpsTextSize;
         }
+        // Shapes
         for (auto i{0uz}; i < Game->level.shapes.size(); ++i)
         {
             const auto& tex{Game->level.shapes.at(i).second};
@@ -394,38 +328,105 @@ namespace
                 }
             }
 
-            if (Game->messageBoxState == MessageBoxState::deleteShape)
-            {
-                const auto result{
-                    GuiMessageBox(UI::MessageBox,
-                                  "Save",
-                                  std::format("Do you want to delete the current shape?").c_str(),
-                                  "YES;NO")
-                };
-                if (result == 1)
-                {
-                    // DELETE
-                    if (Game->currentShape.has_value())
-                    {
-                        RemoveShapeAtIndex(Game->currentShape.value());
-                    }
+            DrawTexturePro(tex.texture, source, dest, Vector2{.x = 0, .y = 0}, 0.0f, WHITE);
+        }
 
-                    Game->messageBoxState = MessageBoxState::none;
-                }
-                if (result == 2)
+        // Spells
+        for (auto i{0uz}; i < Game->level.spells.size(); ++i)
+        {
+            const auto spell{Game->level.spells.at(i)};
+            constexpr auto scaleFactor{0.9f};
+            constexpr auto indentValue{UI::BottomSideBar.height * (1.0f - scaleFactor) * 0.5f};
+
+            const Rectangle dest = {
+                .x = UI::BottomSideBar.x + indentValue + static_cast<float>(i) * (UI::BottomSideBar.height -
+                    indentValue),
+                .y = UI::BottomSideBar.y + indentValue,
+                .width = UI::BottomSideBar.height * scaleFactor,
+                .height = UI::BottomSideBar.height * scaleFactor,
+            };
+
+            if (GuiButton(dest, "") > 0)
+            {
+                switch (Game->currentMode)
                 {
-                    Game->messageBoxState = MessageBoxState::none;
+                case Mode::game:
+                    {
+                        if (const auto selectedSpell{static_cast<int>(i)}; Game->currentSpell == selectedSpell)
+                        {
+                            Game->currentSpell = {};
+                        }
+                        else
+                        {
+                            Game->currentSpell = selectedSpell;
+                        }
+                    }
+                    break;
+                case Mode::editorNormal:
+                    {
+                        Game->currentSpell = static_cast<int>(i);
+                        Game->messageBoxState = MessageBoxState::deleteSpell;
+                    }
+                    break;
+                case Mode::editorAddShape: break;
                 }
             }
 
-            DrawTexturePro(tex.texture, source, dest, Vector2{.x = 0, .y = 0}, 0.0f, WHITE);
+            DrawRectangleRec(dest, ToColor(spell));
+        }
+
+        if (Game->messageBoxState == MessageBoxState::deleteShape)
+        {
+            const auto result{
+                GuiMessageBox(UI::MessageBox,
+                              "",
+                              std::format("Do you want to delete the current shape?").c_str(),
+                              "YES;NO")
+            };
+            if (result == 1)
+            {
+                // DELETE
+                if (Game->currentShape.has_value())
+                {
+                    RemoveShapeAtIndex(Game->currentShape.value());
+                }
+
+                Game->messageBoxState = MessageBoxState::none;
+            }
+            if (result == 2)
+            {
+                Game->messageBoxState = MessageBoxState::none;
+            }
+        }
+
+        if (Game->messageBoxState == MessageBoxState::deleteSpell)
+        {
+            const auto result{
+                GuiMessageBox(UI::MessageBox,
+                              "",
+                              std::format("Do you want to delete the current spell?").c_str(),
+                              "YES;NO")
+            };
+            if (result == 1)
+            {
+                // DELETE
+                if (Game->currentSpell.has_value())
+                {
+                    RemoveSpellAtIndex(Game->currentSpell.value());
+                }
+
+                Game->messageBoxState = MessageBoxState::none;
+            }
+            if (result == 2)
+            {
+                Game->messageBoxState = MessageBoxState::none;
+            }
         }
 
         switch (Game->currentMode)
         {
         case Mode::game:
             {
-                // TODO: Select and merge
                 if (const auto currentShape{Game->currentShape}; currentShape.has_value())
                 {
                     if (const auto index = currentShape.value(); index < Game->level.shapes.size())
@@ -445,7 +446,14 @@ namespace
                             .width = UI::MergeWindow.width * scaleFactor,
                             .height = UI::MergeWindow.height * scaleFactor,
                         };
-                        DrawTexturePro(tex.texture, source, dest, Vector2{.x = 0, .y = 0}, 0.0f, WHITE);
+
+
+                        const Color mergeColor{
+                            Game->currentSpell.has_value()
+                                ? ToColor(Game->level.spells.at(Game->currentSpell.value()))
+                                : WHITE
+                        };
+                        DrawTexturePro(tex.texture, source, dest, Vector2{.x = 0, .y = 0}, 0.0f, mergeColor);
                     }
                 }
             }
@@ -456,6 +464,17 @@ namespace
                 {
                     Game->level.tempShape.Init();
                     Game->currentMode = Mode::editorAddShape;
+                }
+
+                for (const auto index : std::views::iota(0, static_cast<int>(Spell::count)))
+                {
+                    auto rect{UI::EDITOR_AddSpell};
+                    rect.x += static_cast<float>(index) * UI::GenericButtonWidth;
+                    if (const auto spell{static_cast<Spell>(index)};
+                        GuiButton(rect, ToString(spell)) > 0)
+                    {
+                        AddSpell(spell);
+                    }
                 }
             }
             break;

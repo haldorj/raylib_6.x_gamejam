@@ -9,7 +9,7 @@ void MapTiles::Init()
         for (const auto col : iterator)
         {
             auto& currenTile {m_map.at(row + MaxTilesFromCenter + (col + MaxTilesFromCenter) * Width)};
-            currenTile = {.row = row, .col = col};
+            currenTile = {.row = static_cast<int8_t>(row), .col = static_cast<int8_t>(col)};
                 
             if (row == 0 && col == 0)
             {
