@@ -4,6 +4,10 @@
 #include "tilemap.h"
 #include "game.h"
 
+#include <fstream>
+#include <filesystem>
+
+
 namespace
 {
     std::unique_ptr<GameMemory> Game;
@@ -39,7 +43,7 @@ namespace
 
     auto MousePositionInGameScreen() -> bool
     {
-        const auto [x, y]{GetMousePosition()};
+        const auto [x, y] {GetMousePosition()};
         switch (Game->mode)
         {
         case Mode::game:
@@ -50,6 +54,12 @@ namespace
                 y < UI::GameWindowHeight - UI::GenericButtonHeight;
         }
         return false;
+    }
+
+
+    void Shutdown()
+    {
+        CloseWindow();
     }
 
     auto GeneratePreviewTexture(const std::span<MapTile> shape) -> RenderTexture
@@ -104,13 +114,118 @@ namespace
         Game->level.spells.push_back(spell);
     }
 
-    auto RemoveSpellAtIndex(const size_t index) -> void
-    {
-        if (auto& spells{Game->level.spells}; index < spells.size())
+    auto RemoveSpellAtIndex(const size_t index) -> void {
+        if (auto& spells{ Game->level.spells }; index < spells.size())
         {
             spells.erase(spells.begin() + static_cast<int>(index));
         }
     }
+
+
+    void SaveLevel(const std::string& filename)
+    {
+        std::filesystem::create_directories("saves");
+        std::ofstream file("saves/" + filename);
+        if (!file)
+        {
+            std::println("Kunne ikke åpne fil for lagring: {}", filename);
+            return;
+        }
+
+        // TileMap
+        const auto tiles{Game->level.tileMap.ValidTiles()};
+        file << "TILEMAP " << tiles.size() << "\n";
+        for (const auto& t : tiles)
+        {
+            file << static_cast<int>(t.row) << " " << static_cast<int>(t.col) << "\n";
+        }
+
+        // Shapes (kun rådata, ikke teksturen)
+        file << "SHAPES " << Game->level.shapes.size() << "\n";
+        for (const auto& [shape, tex] : Game->level.shapes)
+        {
+            file << shape.size() << "\n";
+            for (const auto& t : shape)
+            {
+                file << static_cast<int>(t.row) << " " << static_cast<int>(t.col) << "\n";
+            }
+        }
+
+        // Spells
+        file << "SPELLS " << Game->level.spells.size() << "\n";
+        for (const auto& s : Game->level.spells)
+        {
+            file << static_cast<int>(s) << "\n";
+        }
+
+        std::println("Level lagret: saves/{}", filename);
+    }
+    void LoadLevel(const std::string& filename)
+        {
+            std::ifstream file("saves/" + filename);
+            if (!file)
+            {
+                std::println("Fant ikke lagret fil: {}", filename);
+                return;
+            }
+    
+            // Rydd opp gammel state først
+            for (auto& [shape, tex] : Game->level.shapes)
+            {
+                UnloadRenderTexture(tex);
+            }
+            Game->level.shapes.clear();
+            Game->level.spells.clear();
+            Game->level.tileMap.Init(); // nullstill tilemap
+    
+            std::string tag;
+            size_t count{};
+    
+            // TileMap
+            file >> tag >> count;
+            for (size_t i{0}; i < count; ++i)
+            {
+                int row{}, col{};
+                file >> row >> col;
+                Game->level.tileMap.SetValid(row, col);
+            }
+    
+            // Shapes
+            file >> tag >> count;
+            for (size_t i{0}; i < count; ++i)
+            {
+                size_t shapeSize{};
+                file >> shapeSize;
+    
+                std::vector<MapTile> shape;
+                shape.reserve(shapeSize);
+                for (size_t j{0}; j < shapeSize; ++j)
+                {
+                    int row{}, col{};
+                    file >> row >> col;
+                    shape.push_back(MapTile{
+                        .row = static_cast<int8_t>(row),
+                        .col = static_cast<int8_t>(col)
+                    });
+                }
+    
+                const auto tex{GeneratePreviewTexture(shape)};
+                Game->level.shapes.emplace_back(shape, tex);
+            }
+    
+            // Spells
+            file >> tag >> count;
+            for (size_t i{0}; i < count; ++i)
+            {
+                int s{};
+                file >> s;
+                Game->level.spells.push_back(static_cast<Spell>(s));
+            }
+    
+            std::println("Level lastet: saves/{}", filename);
+        }
+
+
 
     auto Init() -> void
     {
@@ -222,6 +337,29 @@ namespace
         if (IsKeyPressed(KEY_F2))
         {
             SwapGameAndEditorMode();
+        }
+        if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT))
+        {
+            const auto delta{GetMouseDelta()};
+            Game->cameraGame.offset = Vector2Add(Game->cameraGame.offset, delta);
+        }
+        if (IsMouseButtonDown(KEY_S))
+        {
+            
+        }
+
+        if (IsKeyPressed(KEY_F2))
+        {
+            switch (Game->mode)
+            {
+            case Mode::game:
+                Game->mode = Mode::editorNormal;
+                break;
+            case Mode::editorNormal:
+                Game->mode = Mode::game;
+                break;
+            default: ;
+            }
         }
         const auto delta{GetMouseWheelMove()};
 
@@ -471,7 +609,7 @@ namespace
     auto DrawShapeSideBar() -> void
     {
         // Shapes
-        for (auto i{0uz}; i < Game->level.shapes.size(); ++i)
+        for (auto i{0}; i < Game->level.shapes.size(); ++i)
         {
             // Calculate button/texture position
             const auto& tex{Game->level.shapes.at(i).second};
@@ -529,7 +667,7 @@ namespace
     void DrawSpellSideBar()
     {
         // Spells
-        for (auto i{0uz}; i < Game->level.spells.size(); ++i)
+        for (auto i{0}; i < Game->level.spells.size(); ++i)
         {
             // Calculate button/texture position
             const auto spell{Game->level.spells.at(i)};
@@ -609,6 +747,14 @@ namespace
                     Game->level.tempShape.Init();
                     Game->mode = Mode::editorAddShape;
                 }
+                if (GuiButton(UI::EDITOR_SaveLevelButton, "Save Level") > 0)
+                {
+                    SaveLevel("level1.txt");
+                }
+                if (GuiButton(UI::EDITOR_LoadLevelButton, "Load Level") > 0)
+                {
+                    LoadLevel("level1.txt");
+                }
 
                 for (const auto index : std::views::iota(0, static_cast<int>(Spell::count)))
                 {
@@ -666,10 +812,7 @@ namespace
         UpdateAndRender();
     }
 
-    void Shutdown()
-    {
-        CloseWindow();
-    }
+
 }
 
 
