@@ -63,7 +63,9 @@ struct GameMemory
     Sound fxButton{};
     Texture2D hexagon{};
     Texture2D explosiveRad{};
-    Texture2D explosiveDir{};
+    Texture2D explosiveDirUp{};
+    Texture2D explosiveDirLeft{};
+    Texture2D explosiveDirRight{};
     Texture2D enemy{};
 
     std::optional<int> currentShapeIdx;

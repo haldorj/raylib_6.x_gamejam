@@ -253,7 +253,9 @@ namespace
         Game = std::make_unique<GameMemory>();
         Game->hexagon = LoadTexture("assets/textures/flathex.png");
         Game->explosiveRad = LoadTexture("assets/textures/object/tnt.png");
-        Game->explosiveDir = LoadTexture("assets/textures/object/tnt_dir.png");
+        Game->explosiveDirUp = LoadTexture("assets/textures/object/tnt_up.png");
+        Game->explosiveDirLeft = LoadTexture("assets/textures/object/tnt_left.png");
+        Game->explosiveDirRight = LoadTexture("assets/textures/object/tnt_right.png");
         Game->enemy = LoadTexture("assets/textures/Characters/assassin.png");
 
 
@@ -478,8 +480,14 @@ namespace
         case explosiveRad:
             DrawTextureEx(Game->explosiveRad, adjustedPosition, 0.f, 1.0f, WHITE);
             break;
-        case explosiveDir:
-            DrawTextureEx(Game->explosiveDir, adjustedPosition, 0.f, 1.0f, WHITE);
+        case explosiveDirUp:
+            DrawTextureEx(Game->explosiveDirUp, adjustedPosition, 0.f, 1.0f, WHITE);
+            break;
+        case explosiveDirLeft:
+            DrawTextureEx(Game->explosiveDirLeft, adjustedPosition, 0.f, 1.0f, WHITE);
+            break;
+        case explosiveDirRight:
+            DrawTextureEx(Game->explosiveDirRight, adjustedPosition, 0.f, 1.0f, WHITE);
             break;
         case enemy:
             {
@@ -488,6 +496,8 @@ namespace
                 DrawTextureEx(Game->enemy, adjustedPosition, 0.f, scale, WHITE);
             }
             break;
+
+            
         case count:
             break;
         }
@@ -808,7 +818,6 @@ auto RenderUI() -> void
     }
 
     DrawShapeSideBar();
-    DrawSpellSideBar();
 
         switch (Game->mode)
         {
@@ -860,10 +869,13 @@ auto RenderUI() -> void
     case Mode::game:
         {
             RenderMergeWindow();
+            DrawSpellSideBar();
         }
         break;
     case Mode::editorNormal:
         {
+            DrawSpellSideBar();
+            
             if (GuiButton(UI::EDITOR_AddShapeButton, "Add Shape") > 0)
             {
                 Game->level.tempShape.Init();
@@ -896,6 +908,8 @@ auto RenderUI() -> void
         break;
     case Mode::editorAddShape:
         {
+            DrawSpellSideBar();
+            
             if (GuiButton(UI::EDITOR_AddShapeButton, "Cancel") > 0)
             {
                 Game->mode = Mode::editorNormal;

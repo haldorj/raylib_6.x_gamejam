@@ -9,7 +9,9 @@ enum Entity : uint8_t
 {
     none,
     explosiveRad,
-    explosiveDir,
+    explosiveDirUp,
+    explosiveDirLeft,
+    explosiveDirRight,
     enemy,
     
     // Dont add entries past this
