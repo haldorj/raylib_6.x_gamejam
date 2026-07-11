@@ -62,11 +62,11 @@ struct GameMemory
     Sound fxButton{};
     Texture2D hexagon{};
 
-    std::optional<int> currentShape;
-    std::optional<int> currentSpell;
+    std::optional<int> currentShapeIdx;
+    std::optional<int> currentSpellIdx;
 
     MessageBoxState messageBoxState{MessageBoxState::none};
-    Mode currentMode{Mode::game};
+    Mode mode{Mode::game};
 };
 
 constexpr const char* ToString(const Mode mode)

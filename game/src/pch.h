@@ -11,6 +11,7 @@
 #include <string_view>
 #include <print>
 #include <optional>
+#include <utility>
 
 #ifdef PLATFORM_WEB
 #include <emscripten/emscripten.h>      // Emscripten library

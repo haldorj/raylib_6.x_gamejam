@@ -2,7 +2,7 @@
 
 #include "tilemap.h"
 
-void MapTiles::Init()
+auto MapTiles::Init() -> void
 {
     for (const auto row : iterator)
     {
@@ -21,13 +21,13 @@ void MapTiles::Init()
     }
 }
 
-MapTile& MapTiles::At(const int row, const int col)
+auto MapTiles::At(const int row, const int col) -> MapTile&
 {
     assert(ValidIndex(row, col));
     return m_map.at(row + MaxTilesFromCenter + (col + MaxTilesFromCenter) * Width);
 }
 
-void MapTiles::SetValid(const int row, const int col)
+auto MapTiles::SetValid(const int row, const int col) -> void
 {
     if (!ValidIndex(row, col))
     {
@@ -38,7 +38,7 @@ void MapTiles::SetValid(const int row, const int col)
     currenTile.isValid = !currenTile.isValid;
 }
 
-bool MapTiles::IsEmpty()
+auto MapTiles::IsEmpty() -> bool
 {
     for (const auto row : iterator)
     {
@@ -53,7 +53,7 @@ bool MapTiles::IsEmpty()
     return true;
 }
 
-std::vector<MapTile> MapTiles::ValidTiles()
+auto MapTiles::ValidTiles() -> std::vector<MapTile>
 {
     std::vector<MapTile> result;
     result.reserve(MapSize);
@@ -71,7 +71,7 @@ std::vector<MapTile> MapTiles::ValidTiles()
     return result;
 }
 
-bool MapTiles::ValidIndex(const int row, const int col)
+auto MapTiles::ValidIndex(const int row, const int col) -> bool
 {
     return (row >= -MaxTilesFromCenter && row <= MaxTilesFromCenter && col >= -MaxTilesFromCenter && col <= MaxTilesFromCenter);
 }
