@@ -237,6 +237,7 @@ namespace
         Game->hexagon = LoadTexture("assets/textures/flathex.png");
         Game->explosiveRad = LoadTexture("assets/textures/object/tnt.png");
         Game->explosiveDir = LoadTexture("assets/textures/object/tnt_dir.png");
+        Game->enemy = LoadTexture("assets/textures/Characters/assassin.png");
 
         // Game Camera
         constexpr auto gamePixelHeight{180.f};
@@ -449,7 +450,7 @@ namespace
         }
 
         // Add some offset in Y direction to create a feeling of perspective.
-        const auto adjustedPosition{Vector2Add(position, {0.0f, -4.0f})};
+        const auto adjustedPosition{Vector2Add(position, {.x = 0.0f, .y = -4.0f})};
 
         switch (entity)
         {
@@ -459,6 +460,13 @@ namespace
             break;
         case explosiveDir:
             DrawTextureEx(Game->explosiveDir, adjustedPosition, 0.f, 1.0f, WHITE);
+            break;
+        case enemy:
+            {
+                const auto& tex{Game->enemy};
+                const auto scale{16.0f / static_cast<float>(tex.height)};
+                DrawTextureEx(Game->enemy, adjustedPosition, 0.f, scale, WHITE);
+            }
             break;
         case count:
             break;
@@ -751,141 +759,128 @@ namespace
                 .height = buttonWidth,
             };
 
-            // Button funtionality
+            // Button functionality
             if (GuiButton(dest, "") > 0)
             {
                 Game->currentEntity = static_cast<Entity>(entity);
             }
 
             // Render texture on top of button
-            switch (static_cast<Entity>(entity))
-            {
-            case none:
-                break;
-            case explosiveRad:
-                DrawTextureEx(Game->explosiveRad, {.x = dest.x, .y = dest.y}, 0.0f, 1.0f, WHITE);
-                break;
-            case explosiveDir:
-                DrawTextureEx(Game->explosiveDir, {dest.x, dest.y}, 0.0f, 1.0f, WHITE);
-                break;
-            case count:
-                break;
-            }
+            RenderEntity(static_cast<Entity>(entity), {.x = dest.x + 8.0f, .y = dest.y + 12.0f});
         }
-    }
-
-    auto RenderUI() -> void
-    {
-        BeginMode2D(Game->cameraUI);
-
-        DrawRectangleRec(UI::LeftSideBar, LIGHTGRAY);
-        DrawRectangleRec(UI::BottomSideBar, LIGHTGRAY);
-        DrawRectangleRec(UI::MergeWindow, DARKGRAY);
-
-        auto textPositionY{0};
-        if (Game->mode == Mode::editorNormal)
-        {
-            DrawFPS(0, 0);
-            constexpr auto fpsTextSize{16};
-            textPositionY += fpsTextSize;
-        }
-
-        DrawShapeSideBar();
-        DrawSpellSideBar();
-
-        switch (Game->mode)
-        {
-        case Mode::game:
-            {
-                RenderMergeWindow();
-            }
-            break;
-        case Mode::editorNormal:
-            {
-                if (GuiButton(UI::EDITOR_AddShapeButton, "Add Shape") > 0)
-                {
-                    Game->level.tempShape.Init();
-                    Game->mode = Mode::editorAddShape;
-                }
-                if (GuiButton(UI::EDITOR_SaveShapeButton, "Add Entities") > 0)
-                {
-                    Game->mode = Mode::editorEntityMode;
-                }
-                if (GuiButton(UI::EDITOR_SaveLevelButton, "Save Level") > 0)
-                {
-                    SaveLevel("level1.txt");
-                }
-                if (GuiButton(UI::EDITOR_LoadLevelButton, "Load Level") > 0)
-                {
-                    LoadLevel("level1.txt");
-                }
-
-                for (const auto index : std::views::iota(0, static_cast<int>(Spell::count)))
-                {
-                    auto rect{UI::EDITOR_AddSpell};
-                    rect.x += static_cast<float>(index) * UI::GenericButtonWidth;
-                    if (const auto spell{static_cast<Spell>(index)};
-                        GuiButton(rect, ToString(spell)) > 0)
-                    {
-                        AddSpell(spell);
-                    }
-                }
-            }
-            break;
-        case Mode::editorAddShape:
-            {
-                if (GuiButton(UI::EDITOR_AddShapeButton, "Cancel") > 0)
-                {
-                    Game->mode = Mode::editorNormal;
-                }
-                if (GuiButton(UI::EDITOR_SaveShapeButton, "Save") > 0)
-                {
-                    Game->messageBoxState = MessageBoxState::saveShape;
-                }
-            }
-            break;
-        case Mode::editorEntityMode:
-            {
-                DrawEntitySideBar();
-                if (GuiButton(UI::EDITOR_AddShapeButton, "Cancel") > 0)
-                {
-                    Game->mode = Mode::editorNormal;
-                }
-            }
-            break;
-        }
-        DrawText(std::format("Mode: {}", ToString(Game->mode)).c_str(),
-                 0, textPositionY, 16, GREEN);
-
-        ShowMessageBox();
-
-        EndMode2D();
-    }
-
-    void UpdateAndRender()
-    {
-        // Update game logic
-        Game->mousePosition = Vector2Divide(Vector2Subtract(GetMousePosition(), Game->cameraGame.offset),
-                                            Vector2{.x = Game->cameraGame.zoom, .y = Game->cameraGame.zoom});
-
-        UpdateMusicStream(Game->music); // Update music buffer with new stream data
-
-        // Handle rendering
-        BeginDrawing();
-        RenderGameScreen();
-        RenderUI();
-        EndDrawing();
-    }
-
-    //main game loop
-    void Run()
-    {
-        assert(Game);
-        HandleInput();
-        UpdateAndRender();
     }
 }
 
+auto RenderUI() -> void
+{
+    BeginMode2D(Game->cameraUI);
+
+    DrawRectangleRec(UI::LeftSideBar, LIGHTGRAY);
+    DrawRectangleRec(UI::BottomSideBar, LIGHTGRAY);
+    DrawRectangleRec(UI::MergeWindow, DARKGRAY);
+
+    auto textPositionY{0};
+    if (Game->mode == Mode::editorNormal)
+    {
+        DrawFPS(0, 0);
+        constexpr auto fpsTextSize{16};
+        textPositionY += fpsTextSize;
+    }
+
+    DrawShapeSideBar();
+    DrawSpellSideBar();
+
+    switch (Game->mode)
+    {
+    case Mode::game:
+        {
+            RenderMergeWindow();
+        }
+        break;
+    case Mode::editorNormal:
+        {
+            if (GuiButton(UI::EDITOR_AddShapeButton, "Add Shape") > 0)
+            {
+                Game->level.tempShape.Init();
+                Game->mode = Mode::editorAddShape;
+            }
+            if (GuiButton(UI::EDITOR_SaveShapeButton, "Add Entities") > 0)
+            {
+                Game->mode = Mode::editorEntityMode;
+            }
+            if (GuiButton(UI::EDITOR_SaveLevelButton, "Save Level") > 0)
+            {
+                SaveLevel("level1.txt");
+            }
+            if (GuiButton(UI::EDITOR_LoadLevelButton, "Load Level") > 0)
+            {
+                LoadLevel("level1.txt");
+            }
+
+            for (const auto index : std::views::iota(0, static_cast<int>(Spell::count)))
+            {
+                auto rect{UI::EDITOR_AddSpell};
+                rect.x += static_cast<float>(index) * UI::GenericButtonWidth;
+                if (const auto spell{static_cast<Spell>(index)};
+                    GuiButton(rect, ToString(spell)) > 0)
+                {
+                    AddSpell(spell);
+                }
+            }
+        }
+        break;
+    case Mode::editorAddShape:
+        {
+            if (GuiButton(UI::EDITOR_AddShapeButton, "Cancel") > 0)
+            {
+                Game->mode = Mode::editorNormal;
+            }
+            if (GuiButton(UI::EDITOR_SaveShapeButton, "Save") > 0)
+            {
+                Game->messageBoxState = MessageBoxState::saveShape;
+            }
+        }
+        break;
+    case Mode::editorEntityMode:
+        {
+            DrawEntitySideBar();
+            if (GuiButton(UI::EDITOR_AddShapeButton, "Cancel") > 0)
+            {
+                Game->mode = Mode::editorNormal;
+            }
+        }
+        break;
+    }
+    DrawText(std::format("Mode: {}", ToString(Game->mode)).c_str(),
+             0, textPositionY, 16, GREEN);
+
+    ShowMessageBox();
+
+    EndMode2D();
+}
+
+void UpdateAndRender()
+{
+    // Update game logic
+    Game->mousePosition = Vector2Divide(Vector2Subtract(GetMousePosition(), Game->cameraGame.offset),
+                                        Vector2{.x = Game->cameraGame.zoom, .y = Game->cameraGame.zoom});
+
+    UpdateMusicStream(Game->music); // Update music buffer with new stream data
+
+    // Handle rendering
+    BeginDrawing();
+    RenderGameScreen();
+    RenderUI();
+    EndDrawing();
+}
+
+//main game loop
+void Run()
+{
+    assert(Game);
+    HandleInput();
+    UpdateAndRender();
+}
 
 int main()
 {
