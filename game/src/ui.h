@@ -76,7 +76,20 @@ namespace UI
         .width = LeftSideBar.width,
         .height = GenericButtonHeight,
     };
+    // Save/Load level (Editor mode)
+    inline constexpr Rectangle EDITOR_SaveLevelButton{
+        .x = LeftSideBar.x,
+        .y = LeftSideBar.y + GenericButtonHeight * 2, // under AddShape + SaveShape
+        .width = LeftSideBar.width,
+        .height = GenericButtonHeight,
+    };
 
+    inline constexpr Rectangle EDITOR_LoadLevelButton{
+        .x = LeftSideBar.x,
+        .y = LeftSideBar.y + GenericButtonHeight * 3,
+        .width = LeftSideBar.width,
+        .height = GenericButtonHeight,
+    };
     // AddSpellButton
     inline constexpr Rectangle EDITOR_AddSpell{
         .x = 0,
