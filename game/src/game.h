@@ -71,6 +71,11 @@ struct GameMemory
     MessageBoxState messageBoxState{MessageBoxState::none};
     Entity currentEntity{Entity::explosiveRad};
     Mode mode{Mode::game};
+
+    // Save/Load UI state
+    std::array<char, 64> saveNameBuffer{"level1"}; // tekst brukeren skriver
+    bool saveNameEditMode{false};                   // om tekstboksen er "aktiv"
+    std::vector<std::string> availableSaves;        // liste over .txt-filer i saves
 };
 
 constexpr const char* ToString(const Mode mode)

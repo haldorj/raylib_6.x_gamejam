@@ -122,7 +122,7 @@ namespace
     void SaveLevel(const std::string& filename)
     {
         std::filesystem::create_directories("saves");
-        std::ofstream file("saves/" + filename);
+        std::ofstream file("saves/" + filename + ".txt");
         if (!file)
         {
             std::println("Kunne ikke åpne fil for lagring: {}", filename);
@@ -134,7 +134,9 @@ namespace
         file << "TILEMAP " << tiles.size() << "\n";
         for (const auto& t : tiles)
         {
-            file << static_cast<int>(t.row) << " " << static_cast<int>(t.col) << "\n";
+            file << static_cast<int>(t.row) << " "
+                 << static_cast<int>(t.col) << " "
+                 << static_cast<int>(t.entity) << "\n";
         }
 
         // Shapes (kun rådata, ikke teksturen)
@@ -158,9 +160,22 @@ namespace
         std::println("Level lagret: saves/{}", filename);
     }
 
+    void RefreshAvailableSaves()
+    {
+        Game->availableSaves.clear();
+        std::filesystem::create_directories("saves");
+        for (const auto& entry : std::filesystem::directory_iterator("saves"))
+        {
+            if (entry.is_regular_file() && entry.path().extension() == ".txt")
+            {
+                Game->availableSaves.push_back(entry.path().stem().string()); // uten .txt
+            }
+        }
+    }
+    
     void LoadLevel(const std::string& filename)
     {
-        std::ifstream file("saves/" + filename);
+         std::ifstream file("saves/" + filename + ".txt");
         if (!file)
         {
             std::println("Fant ikke lagret fil: {}", filename);
@@ -183,9 +198,10 @@ namespace
         file >> tag >> count;
         for (size_t i{0}; i < count; ++i)
         {
-            int row{}, col{};
-            file >> row >> col;
+            int row{}, col{}, entity{};
+            file >> row >> col >> entity;
             Game->level.tileMap.SetValid(row, col);
+            Game->level.tileMap.SetEntity(static_cast<Entity>(entity), row, col);
         }
 
         // Shapes
@@ -233,10 +249,14 @@ namespace
         SetTargetFPS(TargetFps);
         InitAudioDevice();
 
+        
         Game = std::make_unique<GameMemory>();
         Game->hexagon = LoadTexture("assets/textures/flathex.png");
         Game->explosiveRad = LoadTexture("assets/textures/object/tnt.png");
         Game->explosiveDir = LoadTexture("assets/textures/object/tnt_dir.png");
+
+
+        RefreshAvailableSaves();
 
         // Game Camera
         constexpr auto gamePixelHeight{180.f};
@@ -811,14 +831,31 @@ namespace
                 {
                     Game->mode = Mode::editorEntityMode;
                 }
+
+                // --- NYTT: erstatter de to gamle if-blokkene ---
+                if (GuiTextBox(UI::EDITOR_SaveNameTextBox, Game->saveNameBuffer.data(),
+                               static_cast<int>(Game->saveNameBuffer.size()), Game->saveNameEditMode) > 0)
+                {
+                    Game->saveNameEditMode = !Game->saveNameEditMode;
+                }
+
                 if (GuiButton(UI::EDITOR_SaveLevelButton, "Save Level") > 0)
                 {
-                    SaveLevel("level1.txt");
+                    SaveLevel(Game->saveNameBuffer.data());
+                    RefreshAvailableSaves();
                 }
-                if (GuiButton(UI::EDITOR_LoadLevelButton, "Load Level") > 0)
+
+                for (size_t i{0}; i < Game->availableSaves.size(); ++i)
                 {
-                    LoadLevel("level1.txt");
+                    auto rect{UI::EDITOR_SaveListStart};
+                    rect.y += static_cast<float>(i) * UI::GenericButtonHeight;
+
+                    if (GuiButton(rect, Game->availableSaves.at(i).c_str()) > 0)
+                    {
+                        LoadLevel(Game->availableSaves.at(i));
+                    }
                 }
+                // --- SLUTT NYTT ---
 
                 for (const auto index : std::views::iota(0, static_cast<int>(Spell::count)))
                 {
