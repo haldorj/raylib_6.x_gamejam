@@ -852,6 +852,8 @@ auto RenderUI() -> void
                         LoadLevel(Game->availableSaves.at(i));
                     }
                 }
+            }
+        }
                 // --- SLUTT NYTT ---
     switch (Game->mode)
     {
