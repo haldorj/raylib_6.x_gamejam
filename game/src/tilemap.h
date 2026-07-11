@@ -8,6 +8,11 @@ constexpr auto MapSize{static_cast<size_t>(Width * Height * 2)};
 enum Entity : uint8_t
 {
     none,
+    explosiveRad,
+    explosiveDir,
+    
+    // Dont add entries past this
+    count,
 };
 
 struct MapTile
@@ -26,6 +31,7 @@ public:
     auto At(int row, int col) -> MapTile&;
     auto ValidIndex(int row, int col) -> bool;
     auto SetValid(int row, int col) -> void;
+    auto SetEntity(Entity entity, int row, int col) -> void;
     auto IsEmpty() -> bool;
 
     auto ValidTiles() -> std::vector<MapTile>;

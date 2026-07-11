@@ -4,10 +4,6 @@
 #include "tilemap.h"
 #include "game.h"
 
-#include <fstream>
-#include <filesystem>
-
-
 namespace
 {
     std::unique_ptr<GameMemory> Game;
@@ -43,13 +39,14 @@ namespace
 
     auto MousePositionInGameScreen() -> bool
     {
-        const auto [x, y] {GetMousePosition()};
+        const auto [x, y]{GetMousePosition()};
         switch (Game->mode)
         {
         case Mode::game:
             return x < UI::GameWindowWidth && y < UI::GameWindowHeight;
         case Mode::editorNormal:
         case Mode::editorAddShape:
+        case Mode::editorEntityMode:
             return x < UI::GameWindowWidth - UI::GenericButtonHeight &&
                 y < UI::GameWindowHeight - UI::GenericButtonHeight;
         }
@@ -114,13 +111,13 @@ namespace
         Game->level.spells.push_back(spell);
     }
 
-    auto RemoveSpellAtIndex(const size_t index) -> void {
-        if (auto& spells{ Game->level.spells }; index < spells.size())
+    auto RemoveSpellAtIndex(const size_t index) -> void
+    {
+        if (auto& spells{Game->level.spells}; index < spells.size())
         {
             spells.erase(spells.begin() + static_cast<int>(index));
         }
     }
-
 
     void SaveLevel(const std::string& filename)
     {
@@ -142,7 +139,7 @@ namespace
 
         // Shapes (kun rådata, ikke teksturen)
         file << "SHAPES " << Game->level.shapes.size() << "\n";
-        for (const auto& [shape, tex] : Game->level.shapes)
+        for (const auto& shape : Game->level.shapes | std::views::keys)
         {
             file << shape.size() << "\n";
             for (const auto& t : shape)
@@ -153,78 +150,78 @@ namespace
 
         // Spells
         file << "SPELLS " << Game->level.spells.size() << "\n";
-        for (const auto& s : Game->level.spells)
+        for (const auto& spell : Game->level.spells)
         {
-            file << static_cast<int>(s) << "\n";
+            file << static_cast<int>(spell) << "\n";
         }
 
         std::println("Level lagret: saves/{}", filename);
     }
+
     void LoadLevel(const std::string& filename)
+    {
+        std::ifstream file("saves/" + filename);
+        if (!file)
         {
-            std::ifstream file("saves/" + filename);
-            if (!file)
-            {
-                std::println("Fant ikke lagret fil: {}", filename);
-                return;
-            }
-    
-            // Rydd opp gammel state først
-            for (auto& [shape, tex] : Game->level.shapes)
-            {
-                UnloadRenderTexture(tex);
-            }
-            Game->level.shapes.clear();
-            Game->level.spells.clear();
-            Game->level.tileMap.Init(); // nullstill tilemap
-    
-            std::string tag;
-            size_t count{};
-    
-            // TileMap
-            file >> tag >> count;
-            for (size_t i{0}; i < count; ++i)
+            std::println("Fant ikke lagret fil: {}", filename);
+            return;
+        }
+
+        // Rydd opp gammel state først
+        for (auto& [shape, tex] : Game->level.shapes)
+        {
+            UnloadRenderTexture(tex);
+        }
+        Game->level.shapes.clear();
+        Game->level.spells.clear();
+        Game->level.tileMap.Init(); // nullstill tilemap
+
+        std::string tag;
+        size_t count{};
+
+        // TileMap
+        file >> tag >> count;
+        for (size_t i{0}; i < count; ++i)
+        {
+            int row{}, col{};
+            file >> row >> col;
+            Game->level.tileMap.SetValid(row, col);
+        }
+
+        // Shapes
+        file >> tag >> count;
+        for (size_t i{0}; i < count; ++i)
+        {
+            size_t shapeSize{};
+            file >> shapeSize;
+
+            std::vector<MapTile> shape;
+            shape.reserve(shapeSize);
+            for (size_t j{0}; j < shapeSize; ++j)
             {
                 int row{}, col{};
                 file >> row >> col;
-                Game->level.tileMap.SetValid(row, col);
+                shape.push_back(MapTile{
+                    .row = static_cast<int8_t>(row),
+                    .col = static_cast<int8_t>(col)
+                });
             }
-    
-            // Shapes
-            file >> tag >> count;
-            for (size_t i{0}; i < count; ++i)
-            {
-                size_t shapeSize{};
-                file >> shapeSize;
-    
-                std::vector<MapTile> shape;
-                shape.reserve(shapeSize);
-                for (size_t j{0}; j < shapeSize; ++j)
-                {
-                    int row{}, col{};
-                    file >> row >> col;
-                    shape.push_back(MapTile{
-                        .row = static_cast<int8_t>(row),
-                        .col = static_cast<int8_t>(col)
-                    });
-                }
-    
-                const auto tex{GeneratePreviewTexture(shape)};
-                Game->level.shapes.emplace_back(shape, tex);
-            }
-    
-            // Spells
-            file >> tag >> count;
-            for (size_t i{0}; i < count; ++i)
-            {
-                int s{};
-                file >> s;
-                Game->level.spells.push_back(static_cast<Spell>(s));
-            }
-    
-            std::println("Level lastet: saves/{}", filename);
+
+            const auto tex{GeneratePreviewTexture(shape)};
+            Game->level.shapes.emplace_back(shape, tex);
         }
 
+        // Spells
+        file >> tag >> count;
+        for (size_t i{0}; i < count; ++i)
+        {
+            int s{};
+            file >> s;
+            Game->level.spells.push_back(static_cast<Spell>(s));
+        }
+
+        std::println("Level lastet: saves/{}", filename);
+    }
 
 
     auto Init() -> void
@@ -238,6 +235,8 @@ namespace
 
         Game = std::make_unique<GameMemory>();
         Game->hexagon = LoadTexture("assets/textures/flathex.png");
+        Game->explosiveRad = LoadTexture("assets/textures/object/tnt.png");
+        Game->explosiveDir = LoadTexture("assets/textures/object/tnt_dir.png");
 
         // Game Camera
         constexpr auto gamePixelHeight{180.f};
@@ -297,6 +296,12 @@ namespace
                 Game->level.tempShape.SetValid(current.row, current.col);
             }
             break;
+        case Mode::editorEntityMode:
+            {
+                const MapTile current{PixelToHex(Game->mousePosition)};
+                Game->level.tileMap.SetEntity(Game->currentEntity, current.row, current.col);
+            }
+            break;
         }
     }
 
@@ -310,7 +315,7 @@ namespace
         case Mode::editorNormal:
             Game->mode = Mode::game;
             break;
-        default: ;
+        default: break;
         }
     }
 
@@ -345,7 +350,6 @@ namespace
         }
         if (IsMouseButtonDown(KEY_S))
         {
-            
         }
         const auto delta{GetMouseWheelMove()};
 
@@ -429,9 +433,34 @@ namespace
             break;
         case Mode::editorNormal:
         case Mode::editorAddShape:
+        case Mode::editorEntityMode:
             {
                 renderSingleHex();
             }
+            break;
+        }
+    }
+
+    auto RenderEntity(const Entity entity, const Vector2 position)
+    {
+        if (entity == none)
+        {
+            return;
+        }
+
+        // Add some offset in Y direction to create a feeling of perspective.
+        const auto adjustedPosition{Vector2Add(position, {0.0f, -4.0f})};
+
+        switch (entity)
+        {
+        case none: return;
+        case explosiveRad:
+            DrawTextureEx(Game->explosiveRad, adjustedPosition, 0.f, 1.0f, WHITE);
+            break;
+        case explosiveDir:
+            DrawTextureEx(Game->explosiveDir, adjustedPosition, 0.f, 1.0f, WHITE);
+            break;
+        case count:
             break;
         }
     }
@@ -445,10 +474,10 @@ namespace
                 auto pos{HexToPixel(row, col)};
                 pos.x -= static_cast<float>(HexagonSize);
                 pos.y -= static_cast<float>(HexagonSize);
-
-                if (map.At(row, col).isValid)
+                if (const auto hex{map.At(row, col)}; hex.isValid)
                 {
                     DrawTextureEx(Game->hexagon, pos, 0.f, 1.0f, WHITE);
+                    RenderEntity(hex.entity, pos);
                 }
             }
         }
@@ -473,6 +502,11 @@ namespace
             ClearBackground(BLUE);
             RenderMap(Game->level.tempShape);
             RenderCurrentShape(Game->level.tempShape, Mode::editorAddShape);
+            break;
+        case Mode::editorEntityMode:
+            ClearBackground(DARKBLUE);
+            RenderMap(Game->level.tileMap);
+            RenderCurrentShape(Game->level.tileMap, Mode::editorEntityMode);
             break;
         }
         EndMode2D();
@@ -700,6 +734,46 @@ namespace
         }
     }
 
+    void DrawEntitySideBar()
+    {
+        // Spells
+        constexpr auto entities{std::views::iota(0, static_cast<int>(Entity::count))};
+        for (const auto entity : entities)
+        {
+            // Calculate button/texture position
+            constexpr auto padding{5.0f};
+            constexpr auto buttonWidth{32.0f};
+
+            const Rectangle dest = {
+                .x = UI::BottomSideBar.x + padding + static_cast<float>(entity) * (buttonWidth + padding),
+                .y = UI::BottomSideBar.y + padding,
+                .width = buttonWidth,
+                .height = buttonWidth,
+            };
+
+            // Button funtionality
+            if (GuiButton(dest, "") > 0)
+            {
+                Game->currentEntity = static_cast<Entity>(entity);
+            }
+
+            // Render texture on top of button
+            switch (static_cast<Entity>(entity))
+            {
+            case none:
+                break;
+            case explosiveRad:
+                DrawTextureEx(Game->explosiveRad, {.x = dest.x, .y = dest.y}, 0.0f, 1.0f, WHITE);
+                break;
+            case explosiveDir:
+                DrawTextureEx(Game->explosiveDir, {dest.x, dest.y}, 0.0f, 1.0f, WHITE);
+                break;
+            case count:
+                break;
+            }
+        }
+    }
+
     auto RenderUI() -> void
     {
         BeginMode2D(Game->cameraUI);
@@ -732,6 +806,10 @@ namespace
                 {
                     Game->level.tempShape.Init();
                     Game->mode = Mode::editorAddShape;
+                }
+                if (GuiButton(UI::EDITOR_SaveShapeButton, "Add Entities") > 0)
+                {
+                    Game->mode = Mode::editorEntityMode;
                 }
                 if (GuiButton(UI::EDITOR_SaveLevelButton, "Save Level") > 0)
                 {
@@ -766,6 +844,15 @@ namespace
                 }
             }
             break;
+        case Mode::editorEntityMode:
+            {
+                DrawEntitySideBar();
+                if (GuiButton(UI::EDITOR_AddShapeButton, "Cancel") > 0)
+                {
+                    Game->mode = Mode::editorNormal;
+                }
+            }
+            break;
         }
         DrawText(std::format("Mode: {}", ToString(Game->mode)).c_str(),
                  0, textPositionY, 16, GREEN);
@@ -797,8 +884,6 @@ namespace
         HandleInput();
         UpdateAndRender();
     }
-
-
 }
 
 

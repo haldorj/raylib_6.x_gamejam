@@ -38,6 +38,17 @@ auto MapTiles::SetValid(const int row, const int col) -> void
     currenTile.isValid = !currenTile.isValid;
 }
 
+auto MapTiles::SetEntity(const Entity entity, const int row, const int col) -> void
+{
+    if (!ValidIndex(row, col))
+    {
+        return;
+    }
+
+    auto& currenTile {At(row, col)};
+    currenTile.entity = entity;
+}
+
 auto MapTiles::IsEmpty() -> bool
 {
     for (const auto row : iterator)

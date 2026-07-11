@@ -12,6 +12,8 @@
 #include <print>
 #include <optional>
 #include <utility>
+#include <fstream>
+#include <filesystem>
 
 #ifdef PLATFORM_WEB
 #include <emscripten/emscripten.h>      // Emscripten library

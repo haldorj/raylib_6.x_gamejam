@@ -16,6 +16,7 @@ enum class Mode : uint8_t
     game,
     editorNormal,
     editorAddShape,
+    editorEntityMode,
 };
 
 enum class Spell : uint8_t
@@ -61,11 +62,14 @@ struct GameMemory
     // TODO: make arrays for assets
     Sound fxButton{};
     Texture2D hexagon{};
+    Texture2D explosiveRad{};
+    Texture2D explosiveDir{};
 
     std::optional<int> currentShapeIdx;
     std::optional<int> currentSpellIdx;
 
     MessageBoxState messageBoxState{MessageBoxState::none};
+    Entity currentEntity{Entity::explosiveRad};
     Mode mode{Mode::game};
 };
 
@@ -76,6 +80,7 @@ constexpr const char* ToString(const Mode mode)
     case Mode::game: return "GAME";
     case Mode::editorNormal: return "EDITOR";
     case Mode::editorAddShape: return "ADD SHAPE";
+    case Mode::editorEntityMode: return "ADD ENTITIES";
     }
     return "UNKNOWN";
 }
