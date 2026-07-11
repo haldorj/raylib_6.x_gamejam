@@ -42,12 +42,8 @@ namespace
     }
 
     auto MousePositionInGameScreen() -> bool
-    
-
-    
-    void Shutdown()
     {
-        const auto [x, y]{GetMousePosition()};
+        const auto [x, y] {GetMousePosition()};
         switch (Game->mode)
         {
         case Mode::game:
@@ -58,6 +54,12 @@ namespace
                 y < UI::GameWindowHeight - UI::GenericButtonHeight;
         }
         return false;
+    }
+
+
+    void Shutdown()
+    {
+        CloseWindow();
     }
 
     auto GeneratePreviewTexture(const std::span<MapTile> shape) -> RenderTexture
@@ -112,7 +114,14 @@ namespace
         Game->level.spells.push_back(spell);
     }
 
-    auto RemoveSpellAtIndex(const size_t index) -> void
+    auto RemoveSpellAtIndex(const size_t index) -> void {
+        if (auto& spells{ Game->level.spells }; index < spells.size())
+        {
+            spells.erase(spells.begin() + static_cast<int>(index));
+        }
+    }
+
+
     void SaveLevel(const std::string& filename)
     {
         std::filesystem::create_directories("saves");
@@ -216,13 +225,7 @@ namespace
             std::println("Level lastet: saves/{}", filename);
         }
 
-    void RemoveSpellAtIndex(const size_t index)
-    {
-        if (auto& spells{Game->level.spells}; index < spells.size())
-        {
-            spells.erase(spells.begin() + static_cast<int>(index));
-        }
-    }
+
 
     auto Init() -> void
     {
@@ -344,15 +347,16 @@ namespace
         {
             
         }
+
         if (IsKeyPressed(KEY_F2))
         {
-            switch (Game->currentMode)
+            switch (Game->mode)
             {
             case Mode::game:
-                Game->currentMode = Mode::editorNormal;
+                Game->mode = Mode::editorNormal;
                 break;
             case Mode::editorNormal:
-                Game->currentMode = Mode::game;
+                Game->mode = Mode::game;
                 break;
             default: ;
             }
@@ -808,10 +812,7 @@ namespace
         UpdateAndRender();
     }
 
-    void Shutdown()
-    {
-        CloseWindow();
-    }
+
 }
 
 
