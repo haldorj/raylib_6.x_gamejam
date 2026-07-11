@@ -304,10 +304,6 @@ namespace
             }
             break;
         case Mode::editorNormal:
-            {
-                renderSingleHex();
-            }
-            break;
         case Mode::editorAddShape:
             {
                 renderSingleHex();
@@ -459,11 +455,15 @@ namespace
                 .height = UI::MergeWindow.height * scaleFactor,
             };
 
-            const Color mergeColor{
-                Game->currentSpellIdx.has_value()
-                    ? ToColor(Game->level.spells.at(Game->currentSpellIdx.value()))
-                    : WHITE
-            };
+            Color mergeColor;
+            if (Game->currentSpellIdx.has_value())
+            {
+                mergeColor = ToColor(Game->level.spells.at(Game->currentSpellIdx.value()));
+            }
+            else
+            {
+                mergeColor = WHITE;
+            }
             DrawTexturePro(tex.texture, source, dest, Vector2{.x = 0, .y = 0}, 0.0f, mergeColor);
         }
     }
