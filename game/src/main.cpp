@@ -347,20 +347,6 @@ namespace
         {
             
         }
-
-        if (IsKeyPressed(KEY_F2))
-        {
-            switch (Game->mode)
-            {
-            case Mode::game:
-                Game->mode = Mode::editorNormal;
-                break;
-            case Mode::editorNormal:
-                Game->mode = Mode::game;
-                break;
-            default: ;
-            }
-        }
         const auto delta{GetMouseWheelMove()};
 
         if (const auto newZoom{Game->cameraGame.zoom + delta};
