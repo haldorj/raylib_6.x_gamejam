@@ -76,13 +76,6 @@ namespace UI
         .width = LeftSideBar.width,
         .height = GenericButtonHeight,
     };
-    // Save/Load level (Editor mode)
-    inline constexpr Rectangle EDITOR_SaveLevelButton{
-        .x = LeftSideBar.x,
-        .y = LeftSideBar.y + GenericButtonHeight * 2, // under AddShape + SaveShape
-        .width = LeftSideBar.width,
-        .height = GenericButtonHeight,
-    };
 
     inline constexpr Rectangle EDITOR_LoadLevelButton{
         .x = LeftSideBar.x,
@@ -95,6 +88,29 @@ namespace UI
         .x = 0,
         .y = GameWindowHeight - GenericButtonHeight,
         .width = GenericButtonWidth,
+        .height = GenericButtonHeight,
+    };
+
+    // Tekstboks for filnavn (over Save/Load-knappene, eller ved siden av)
+    inline constexpr Rectangle EDITOR_SaveNameTextBox{
+        .x = LeftSideBar.x,
+        .y = LeftSideBar.y + GenericButtonHeight * 2,
+        .width = LeftSideBar.width,
+        .height = GenericButtonHeight,
+    };
+
+    inline constexpr Rectangle EDITOR_SaveLevelButton{
+        .x = LeftSideBar.x,
+        .y = LeftSideBar.y + GenericButtonHeight * 3,
+        .width = LeftSideBar.width,
+        .height = GenericButtonHeight,
+    };
+
+    // Start av listen over eksisterende lagringer
+    inline constexpr Rectangle EDITOR_SaveListStart{
+        .x = LeftSideBar.x,
+        .y = LeftSideBar.y + GenericButtonHeight * 4,
+        .width = LeftSideBar.width,
         .height = GenericButtonHeight,
     };
 }
