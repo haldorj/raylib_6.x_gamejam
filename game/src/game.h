@@ -64,6 +64,7 @@ struct GameMemory
     Texture2D hexagon{};
     Texture2D explosiveRad{};
     Texture2D explosiveDir{};
+    Texture2D enemy{};
 
     std::optional<int> currentShapeIdx;
     std::optional<int> currentSpellIdx;

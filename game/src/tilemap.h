@@ -10,6 +10,7 @@ enum Entity : uint8_t
     none,
     explosiveRad,
     explosiveDir,
+    enemy,
     
     // Dont add entries past this
     count,
