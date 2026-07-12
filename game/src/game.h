@@ -58,9 +58,11 @@ struct GameMemory
     Camera2D cameraGame{};
     Camera2D cameraUI{};
     Vector2 mousePosition{};
-
-    // TODO: make arrays for assets
+    
     Sound fxButton{};
+    Sound explosionMedium{};
+    Sound explosionLarge{};
+    
     Texture2D hexagon{};
     Texture2D explosiveRad{};
     Texture2D explosiveDirUp{};

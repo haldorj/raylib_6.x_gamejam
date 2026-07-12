@@ -93,14 +93,14 @@ namespace UI
 
     // Tekstboks for filnavn (over Save/Load-knappene, eller ved siden av)
     inline constexpr Rectangle EDITOR_SaveNameTextBox{
-        .x = LeftSideBar.x,
+        .x = 0,
         .y = LeftSideBar.y + GenericButtonHeight * 2,
         .width = LeftSideBar.width,
         .height = GenericButtonHeight,
     };
 
     inline constexpr Rectangle EDITOR_SaveLevelButton{
-        .x = LeftSideBar.x,
+        .x = 0,
         .y = LeftSideBar.y + GenericButtonHeight * 3,
         .width = LeftSideBar.width,
         .height = GenericButtonHeight,
@@ -108,7 +108,7 @@ namespace UI
 
     // Start av listen over eksisterende lagringer
     inline constexpr Rectangle EDITOR_SaveListStart{
-        .x = LeftSideBar.x,
+        .x = 0,
         .y = LeftSideBar.y + GenericButtonHeight * 4,
         .width = LeftSideBar.width,
         .height = GenericButtonHeight,

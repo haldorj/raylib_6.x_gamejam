@@ -37,6 +37,18 @@ namespace
         return result;
     }
 
+    // Returns neighboring hex coordinates around a hex
+    auto AxialDirectionVectors(const int row, const int col) -> std::vector<std::pair<int, int>>
+    {
+        const auto hex = [row, col](const int rowDelta, const int colDelta) -> std::pair<int, int>
+        {
+            return {row - rowDelta, col - colDelta};
+        };
+
+        return {hex(+1, 0), hex(+1, -1), hex(0, -1), hex(-1, 0), hex(-1, +1), hex(0, +1)};
+    }
+
+
     auto MousePositionInGameScreen() -> bool
     {
         const auto [x, y]{GetMousePosition()};
@@ -135,8 +147,8 @@ namespace
         for (const auto& t : tiles)
         {
             file << static_cast<int>(t.row) << " "
-                 << static_cast<int>(t.col) << " "
-                 << static_cast<int>(t.entity) << "\n";
+                << static_cast<int>(t.col) << " "
+                << static_cast<int>(t.entity) << "\n";
         }
 
         // Shapes (kun rådata, ikke teksturen)
@@ -172,10 +184,10 @@ namespace
             }
         }
     }
-    
+
     void LoadLevel(const std::string& filename)
     {
-         std::ifstream file("saves/" + filename + ".txt");
+        std::ifstream file("saves/" + filename + ".txt");
         if (!file)
         {
             std::println("Fant ikke lagret fil: {}", filename);
@@ -183,7 +195,7 @@ namespace
         }
 
         // Rydd opp gammel state først
-        for (auto& [shape, tex] : Game->level.shapes)
+        for (const auto& tex : Game->level.shapes | std::views::values)
         {
             UnloadRenderTexture(tex);
         }
@@ -198,7 +210,9 @@ namespace
         file >> tag >> count;
         for (size_t i{0}; i < count; ++i)
         {
-            int row{}, col{}, entity{};
+            int row{};
+            int col{};
+            int entity{};
             file >> row >> col >> entity;
             Game->level.tileMap.SetValid(row, col);
             Game->level.tileMap.SetEntity(static_cast<Entity>(entity), row, col);
@@ -215,7 +229,8 @@ namespace
             shape.reserve(shapeSize);
             for (size_t j{0}; j < shapeSize; ++j)
             {
-                int row{}, col{};
+                int row{};
+                int col{};
                 file >> row >> col;
                 shape.push_back(MapTile{
                     .row = static_cast<int8_t>(row),
@@ -229,7 +244,7 @@ namespace
 
         // Spells
         file >> tag >> count;
-        for (size_t i{0}; i < count; ++i)
+        for (auto i{0uz}; i < count; ++i)
         {
             int s{};
             file >> s;
@@ -238,7 +253,6 @@ namespace
 
         std::println("Level lastet: saves/{}", filename);
     }
-
 
     auto Init() -> void
     {
@@ -249,7 +263,6 @@ namespace
         SetTargetFPS(TargetFps);
         InitAudioDevice();
 
-        
         Game = std::make_unique<GameMemory>();
         Game->hexagon = LoadTexture("assets/textures/flathex.png");
         Game->explosiveRad = LoadTexture("assets/textures/object/tnt.png");
@@ -257,8 +270,6 @@ namespace
         Game->explosiveDirLeft = LoadTexture("assets/textures/object/tnt_left.png");
         Game->explosiveDirRight = LoadTexture("assets/textures/object/tnt_right.png");
         Game->enemy = LoadTexture("assets/textures/Characters/assassin.png");
-
-
         RefreshAvailableSaves();
 
         // Game Camera
@@ -270,11 +281,13 @@ namespace
 
         Game->music = LoadMusicStream("assets/Music/Goblins_Dance_(Battle).wav");
 #ifdef _DEBUG
-        SetMusicVolume(Game->music, 0.0f);
+        SetMusicVolume(Game->music, 0.0f); // Set volume to 0 in debug.
 #elif
         SetMusicVolume(Game->music, MasterVolume * MusicVolume);
 #endif
         Game->fxButton = LoadSound("assets/Sound effects/UI sounds/menu_blip.wav");
+        Game->explosionMedium = LoadSound("assets/Sound effects/Object/explosion_medium.wav");
+        Game->explosionLarge = LoadSound("assets/Sound effects/Object/explosion_large.wav");
 
         // float timePlayed = 0.0f; // Time played normalized [0.0f..1.0f]
         constexpr float pan = 0.0f; // Default audio pan center [-1.0f..1.0f]
@@ -288,15 +301,104 @@ namespace
 #endif
     }
 
-    // auto PlaceCurrentShape() -> void
-    // {
-    //     const MapTile current{PixelToHex(Game->mousePosition)};
-    //     if (Game->currentShape.has_value())
-    //     {
-    //         const auto shapeIndex{static_cast<size_t>(Game->currentShape.value())};
-    //         const auto& currentShape{Game->level.shapes.at(shapeIndex)};
-    //     }
-    // }
+    auto CheckShapeCollisionWithMap(MapTiles& map) -> bool
+    {
+        const auto index{Game->currentShapeIdx};
+        const auto mousePos{PixelToHex(Game->mousePosition)};
+        if (!index.has_value())
+        {
+            return false;
+        }
+        for (const auto shape : Game->level.shapes.at(index.value()).first)
+        {
+            const auto adjustedRow{shape.row + mousePos.row};
+            const auto adjustedCol{shape.col + mousePos.col};
+            if (!map.ValidIndex(adjustedRow, adjustedCol))
+            {
+                return false;
+            }
+            if (!map.At(adjustedRow, adjustedCol).isValid)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    auto PlaceCurrentShape() -> void
+    {
+        const auto explodeArea = [](MapTile& mapTile)
+        {
+            if (mapTile.entity == enemy)
+            {
+                mapTile.entity = none;
+            }
+        };
+
+        auto& map{Game->level.tileMap};
+        if (!CheckShapeCollisionWithMap(map))
+        {
+            return;
+        }
+
+        const auto mousePos{PixelToHex(Game->mousePosition)};
+        if (!Game->currentSpellIdx.has_value())
+        {
+            return;
+        }
+
+        for (auto& shape : Game->level.shapes.at(Game->currentShapeIdx.value()).first)
+        {
+            const auto adjustedRow{shape.row + mousePos.row};
+            const auto adjustedCol{shape.col + mousePos.col};
+            if (!map.ValidIndex(adjustedRow, adjustedCol))
+            {
+                return;
+            }
+
+            if (!map.At(adjustedRow, adjustedCol).isValid)
+            {
+                return;
+            }
+
+            switch (Game->level.spells.at(Game->currentSpellIdx.value()))
+            {
+            case Spell::fire:
+                {
+                    if (map.At(adjustedRow, adjustedCol).entity == explosiveRad)
+                    {
+                        // Explode in a radius around the entity
+                        PlaySound(Game->explosionMedium);
+                        map.At(adjustedRow, adjustedCol).entity = none;
+
+                        for (const auto [row, col] : AxialDirectionVectors(adjustedRow, adjustedCol))
+                        {
+                            explodeArea(map.At(row, col));
+                        }
+                    }
+                }
+                break;
+            case Spell::sickness:
+                {
+                }
+                break;
+            case Spell::death:
+                {
+                }
+                break;
+            case Spell::fear:
+                {
+                }
+                break;
+            case Spell::obsession:
+                {
+                }
+                break;
+            case Spell::count:
+                break;
+            }
+        }
+    }
 
     auto HandleClickGameScreen() -> auto
     {
@@ -304,7 +406,7 @@ namespace
         {
         case Mode::game:
             {
-                //PlaceCurrentShape();
+                PlaceCurrentShape();
             }
             break;
         case Mode::editorNormal:
@@ -391,30 +493,6 @@ namespace
         }
     }
 
-    auto CheckShapeCollisionWithMap(MapTiles& map) -> bool
-    {
-        const auto index{Game->currentShapeIdx};
-        const auto mousePos{PixelToHex(Game->mousePosition)};
-        if (!index.has_value())
-        {
-            return false;
-        }
-        for (const auto shape : Game->level.shapes.at(index.value()).first)
-        {
-            const auto adjustedRow{shape.row + mousePos.row};
-            const auto adjustedCol{shape.col + mousePos.col};
-            if (!map.ValidIndex(adjustedRow, adjustedCol))
-            {
-                return false;
-            }
-            if (!map.At(adjustedRow, adjustedCol).isValid)
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
     auto RenderCurrentShape(MapTiles& map, const Mode mode)
     {
         const auto mousePos{PixelToHex(Game->mousePosition)};
@@ -497,7 +575,7 @@ namespace
             }
             break;
 
-            
+
         case count:
             break;
         }
@@ -801,6 +879,39 @@ namespace
     }
 }
 
+void RenderSaveOptions()
+{
+    if (GuiButton(UI::EDITOR_AddShapeButton, "Add Shape") > 0)
+    {
+        Game->level.tempShape.Init();
+        Game->mode = Mode::editorAddShape;
+    }
+
+    // --- NYTT: erstatter de to gamle if-blokkene ---
+    if (GuiTextBox(UI::EDITOR_SaveNameTextBox, Game->saveNameBuffer.data(),
+                   static_cast<int>(Game->saveNameBuffer.size()), Game->saveNameEditMode) > 0)
+    {
+        Game->saveNameEditMode = !Game->saveNameEditMode;
+    }
+
+    if (GuiButton(UI::EDITOR_SaveLevelButton, "Save Level") > 0)
+    {
+        SaveLevel(Game->saveNameBuffer.data());
+        RefreshAvailableSaves();
+    }
+
+    for (size_t i{0}; i < Game->availableSaves.size(); ++i)
+    {
+        auto rect{UI::EDITOR_SaveListStart};
+        rect.y += static_cast<float>(i) * UI::GenericButtonHeight;
+
+        if (GuiButton(rect, Game->availableSaves.at(i).c_str()) > 0)
+        {
+            LoadLevel(Game->availableSaves.at(i));
+        }
+    }
+}
+
 auto RenderUI() -> void
 {
     BeginMode2D(Game->cameraUI);
@@ -819,51 +930,7 @@ auto RenderUI() -> void
 
     DrawShapeSideBar();
 
-        switch (Game->mode)
-        {
-        case Mode::game:
-            {
-                RenderMergeWindow();
-            }
-            break;
-        case Mode::editorNormal:
-            {
-                if (GuiButton(UI::EDITOR_AddShapeButton, "Add Shape") > 0)
-                {
-                    Game->level.tempShape.Init();
-                    Game->mode = Mode::editorAddShape;
-                }
-                if (GuiButton(UI::EDITOR_SaveShapeButton, "Add Entities") > 0)
-                {
-                    Game->mode = Mode::editorEntityMode;
-                }
-
-                // --- NYTT: erstatter de to gamle if-blokkene ---
-                if (GuiTextBox(UI::EDITOR_SaveNameTextBox, Game->saveNameBuffer.data(),
-                               static_cast<int>(Game->saveNameBuffer.size()), Game->saveNameEditMode) > 0)
-                {
-                    Game->saveNameEditMode = !Game->saveNameEditMode;
-                }
-
-                if (GuiButton(UI::EDITOR_SaveLevelButton, "Save Level") > 0)
-                {
-                    SaveLevel(Game->saveNameBuffer.data());
-                    RefreshAvailableSaves();
-                }
-
-                for (size_t i{0}; i < Game->availableSaves.size(); ++i)
-                {
-                    auto rect{UI::EDITOR_SaveListStart};
-                    rect.y += static_cast<float>(i) * UI::GenericButtonHeight;
-
-                    if (GuiButton(rect, Game->availableSaves.at(i).c_str()) > 0)
-                    {
-                        LoadLevel(Game->availableSaves.at(i));
-                    }
-                }
-            }
-        }
-                // --- SLUTT NYTT ---
+    // --- SLUTT NYTT ---
     switch (Game->mode)
     {
     case Mode::game:
@@ -875,7 +942,8 @@ auto RenderUI() -> void
     case Mode::editorNormal:
         {
             DrawSpellSideBar();
-            
+            RenderSaveOptions();
+
             if (GuiButton(UI::EDITOR_AddShapeButton, "Add Shape") > 0)
             {
                 Game->level.tempShape.Init();
@@ -909,7 +977,7 @@ auto RenderUI() -> void
     case Mode::editorAddShape:
         {
             DrawSpellSideBar();
-            
+
             if (GuiButton(UI::EDITOR_AddShapeButton, "Cancel") > 0)
             {
                 Game->mode = Mode::editorNormal;
