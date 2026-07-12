@@ -339,10 +339,9 @@ namespace
         // Init map
         Game->level.tileMap.Init();
         PlayMusicStream(Game->music);
-        
+
         // LOAD FIRST LEVEL
-        Game->currentLevelIndex = 0;
-        LoadLevel(Game->availableSaves.at(Game->currentLevelIndex));
+        LoadLevel(Game->availableSaves.at(Game->LevelCounter));
 
 #ifdef PLATFORM_WEB
         Game->shader = LoadShader(nullptr, "assets/shaders/shader_web.fs");
@@ -376,7 +375,7 @@ namespace
         }
         return true;
     }
-    
+
     void ExplodeArea(MapTile& mapTile);
     void ExplodeBarrelRad(const int adjustedRow, const int adjustedCol);
     void ExplodeBarrelUp(const int adjustedRow, const int adjustedCol);
@@ -414,7 +413,7 @@ namespace
             mapTile.entity = none;
         }
     };
-    
+
     void ExplodeBarrelRad(const int adjustedRow, const int adjustedCol)
     {
         auto& map{Game->level.tileMap};
@@ -427,7 +426,7 @@ namespace
             ExplodeArea(map.At(row, col));
         }
     }
-    
+
     void ExplodeBarrelUp(const int adjustedRow, const int adjustedCol)
     {
         auto& map{Game->level.tileMap};
@@ -445,7 +444,7 @@ namespace
             ExplodeArea(map.At(row, col));
         }
     }
-    
+
     void ExplodeBarrelLeft(const int adjustedRow, const int adjustedCol)
     {
         auto& map{Game->level.tileMap};
@@ -463,7 +462,7 @@ namespace
             ExplodeArea(map.At(row, col));
         }
     }
-    
+
     void ExplodeBarrelRight(const int adjustedRow, const int adjustedCol)
     {
         auto& map{Game->level.tileMap};
@@ -481,7 +480,7 @@ namespace
             ExplodeArea(map.At(row, col));
         }
     }
-    
+
     auto PlaceCurrentShape() -> void
     {
         auto& map{Game->level.tileMap};
@@ -622,7 +621,7 @@ namespace
             const auto delta{GetMouseDelta()};
             Game->cameraGame.offset = Vector2Add(Game->cameraGame.offset, delta);
         }
-        if (IsKeyPressed(KEY_F2))
+        if (IsKeyPressed(KEY_E))
         {
             SwapGameAndEditorMode();
         }
@@ -867,7 +866,7 @@ namespace
                 Game->messageBoxState = MessageBoxState::none;
             }
         }
-        
+
         if (Game->messageBoxState == MessageBoxState::levelWin)
         {
             const auto result{
@@ -881,7 +880,12 @@ namespace
                 // NextLevel
                 Game->messageBoxState = MessageBoxState::none;
                 Game->LevelCounter++;
-                LoadLevel(Game->availableSaves.at(Game->currentLevelIndex+Game->LevelCounter));
+                if (Game->LevelCounter > 5)
+                {
+                    Game->LevelCounter = 0;
+                }
+
+                LoadLevel(Game->availableSaves.at(Game->LevelCounter));
             }
         }
     }
@@ -1197,14 +1201,14 @@ void UpdateAndRender()
                                         Vector2{.x = Game->cameraGame.zoom, .y = Game->cameraGame.zoom});
 
     UpdateMusicStream(Game->music); // Update music buffer with new stream data
-    
+
     // Win condition
     Game->numOfEnemies = CurrentEnemyCount();
     if (Game->numOfEnemies <= 0 && Game->mode == Mode::game)
     {
         Game->messageBoxState = MessageBoxState::levelWin;
     }
-    
+
     // Handle rendering
     //BeginDrawing();
     BeginTextureMode(Game->renderTexture);
