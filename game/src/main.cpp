@@ -54,8 +54,26 @@ namespace
         return {hex(+1, 0), hex(+1, -1), hex(0, -1), hex(-1, 0), hex(-1, +1), hex(0, +1)};
     }
 
-    [[nodiscard]]auto FindPathToFirstInvalidHexInDirection(const int row, const int col,
-                                              const std::pair<int, int> dir) -> std::vector<std::pair<int, int>>
+    auto CurrentEnemyCount() -> int
+    {
+        auto count{0};
+        for (const auto row : Game->level.tileMap.iterator)
+        {
+            for (const auto col : Game->level.tileMap.iterator)
+            {
+                if (Game->level.tileMap.At(row, col).isValid &&
+                    Game->level.tileMap.At(row, col).entity == enemy)
+                {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    [[nodiscard]] auto FindPathToFirstInvalidHexInDirection(const int row, const int col,
+                                                            const std::pair<int, int> dir)
+        -> std::vector<std::pair<int, int>>
     {
         std::vector<std::pair<int, int>> path;
 
@@ -64,16 +82,21 @@ namespace
 
         while (Game->level.tileMap.ValidIndex(currentRow, currentCol))
         {
-            const auto [dirX, dirY]{dir};
-            currentRow += dirX;
-            currentCol += dirY;
-            
             if (!Game->level.tileMap.At(currentRow, currentCol).isValid)
             {
                 break;
             }
 
+            const auto [dirX, dirY]{dir};
+            currentRow += dirX;
+            currentCol += dirY;
+
             path.emplace_back(currentRow, currentCol);
+        }
+
+        if (!path.empty())
+        {
+            path.erase(path.begin());
         }
 
         return path;
@@ -410,14 +433,14 @@ namespace
                     if (map.At(adjustedRow, adjustedCol).entity == explosiveDirUp)
                     {
                         PlaySound(Game->explosionMedium);
-                        
+
                         auto path{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, North)};
                         const auto& path2{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, South)};
-                        
+
                         // combine 
                         path.reserve(path.size() + path.size());
                         path.insert(path.end(), path2.begin(), path2.end());
-                        
+
                         for (const auto [row, col] : path)
                         {
                             explodeArea(map.At(row, col));
@@ -426,14 +449,14 @@ namespace
                     if (map.At(adjustedRow, adjustedCol).entity == explosiveDirLeft)
                     {
                         PlaySound(Game->explosionMedium);
-                        
+
                         auto path{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, NorthWest)};
                         const auto& path2{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, SouthEast)};
-                        
+
                         // combine 
                         path.reserve(path.size() + path.size());
                         path.insert(path.end(), path2.begin(), path2.end());
-                        
+
                         for (const auto [row, col] : path)
                         {
                             explodeArea(map.At(row, col));
@@ -442,14 +465,14 @@ namespace
                     if (map.At(adjustedRow, adjustedCol).entity == explosiveDirRight)
                     {
                         PlaySound(Game->explosionMedium);
-                        
+
                         auto path{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, NorthEast)};
                         const auto& path2{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, SouthWest)};
-                        
+
                         // combine 
                         path.reserve(path.size() + path.size());
                         path.insert(path.end(), path2.begin(), path2.end());
-                        
+
                         for (const auto [row, col] : path)
                         {
                             explodeArea(map.At(row, col));
@@ -788,6 +811,21 @@ namespace
                 Game->messageBoxState = MessageBoxState::none;
             }
         }
+        
+        if (Game->messageBoxState == MessageBoxState::levelWin)
+        {
+            const auto result{
+                GuiMessageBox(UI::MessageBox,
+                              "Win",
+                              "You won!",
+                              "Next Level")
+            };
+            if (result == 1) //YES
+            {
+                // NextLevel
+                Game->messageBoxState = MessageBoxState::none;
+            }
+        }
     }
 
     auto RenderMergeWindow() -> void
@@ -1101,7 +1139,14 @@ void UpdateAndRender()
                                         Vector2{.x = Game->cameraGame.zoom, .y = Game->cameraGame.zoom});
 
     UpdateMusicStream(Game->music); // Update music buffer with new stream data
-
+    
+    // Win condition
+    Game->numOfEnemies = CurrentEnemyCount();
+    if (Game->numOfEnemies <= 0 && Game->mode == Mode::game)
+    {
+        Game->messageBoxState = MessageBoxState::levelWin;
+    }
+    
     // Handle rendering
     //BeginDrawing();
     BeginTextureMode(Game->renderTexture);
