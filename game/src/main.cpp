@@ -1163,7 +1163,7 @@ void UpdateAndRender()
     // Post-processing
     BeginDrawing();
     ClearBackground(BLACK);
-    BeginShaderMode(Game->shader);
+    //BeginShaderMode(Game->shader);
     const auto dest{
         Rectangle{
             .x = 0,
@@ -1176,7 +1176,7 @@ void UpdateAndRender()
                    dest,
                    Vector2{.x = 0, .y = 0},
                    WHITE);
-    EndShaderMode();
+    //EndShaderMode();
     EndDrawing();
 }
 
