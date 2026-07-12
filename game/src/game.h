@@ -69,6 +69,9 @@ struct GameMemory
     Texture2D explosiveDirLeft{};
     Texture2D explosiveDirRight{};
     Texture2D enemy{};
+    
+    RenderTexture2D renderTexture{};
+    Shader shader{};
 
     std::optional<int> currentShapeIdx;
     std::optional<int> currentSpellIdx;

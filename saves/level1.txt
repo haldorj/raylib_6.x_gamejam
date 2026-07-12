@@ -1,5 +1,5 @@
 TILEMAP 2
--1 0 0
+-1 -2 0
 0 0 0
 SHAPES 0
 SPELLS 0

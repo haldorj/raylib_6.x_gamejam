@@ -4,6 +4,12 @@
 #include "tilemap.h"
 #include "game.h"
 
+#ifndef PLATFORM_WEB
+#define GLSL_VERSION 330
+#else   // PLATFORM_ANDROID, PLATFORM_WEB
+#define GLSL_VERSION 100
+#endif
+
 namespace
 {
     std::unique_ptr<GameMemory> Game;
@@ -288,6 +294,9 @@ namespace
         Game->fxButton = LoadSound("assets/Sound effects/UI sounds/menu_blip.wav");
         Game->explosionMedium = LoadSound("assets/Sound effects/Object/explosion_medium.wav");
         Game->explosionLarge = LoadSound("assets/Sound effects/Object/explosion_large.wav");
+
+        Game->renderTexture = LoadRenderTexture(static_cast<int>(WindowWidth), static_cast<int>(WindowHeight));
+        Game->shader = LoadShader(nullptr, "assets/shaders/shader.fs");
 
         // float timePlayed = 0.0f; // Time played normalized [0.0f..1.0f]
         constexpr float pan = 0.0f; // Default audio pan center [-1.0f..1.0f]
@@ -605,24 +614,32 @@ namespace
         switch (Game->mode)
         {
         case Mode::game:
-            ClearBackground(BLACK);
-            RenderMap(Game->level.tileMap);
-            RenderCurrentShape(Game->level.tileMap, Mode::game);
+            {
+                ClearBackground(BLACK);
+                RenderMap(Game->level.tileMap);
+                RenderCurrentShape(Game->level.tileMap, Mode::game);
+            }
             break;
         case Mode::editorNormal:
-            ClearBackground(DARKBLUE);
-            RenderMap(Game->level.tileMap);
-            RenderCurrentShape(Game->level.tileMap, Mode::editorNormal);
+            {
+                ClearBackground(DARKBLUE);
+                RenderMap(Game->level.tileMap);
+                RenderCurrentShape(Game->level.tileMap, Mode::editorNormal);
+            }
             break;
         case Mode::editorAddShape:
-            ClearBackground(BLUE);
-            RenderMap(Game->level.tempShape);
-            RenderCurrentShape(Game->level.tempShape, Mode::editorAddShape);
+            {
+                ClearBackground(BLUE);
+                RenderMap(Game->level.tempShape);
+                RenderCurrentShape(Game->level.tempShape, Mode::editorAddShape);
+            }
             break;
         case Mode::editorEntityMode:
-            ClearBackground(DARKBLUE);
-            RenderMap(Game->level.tileMap);
-            RenderCurrentShape(Game->level.tileMap, Mode::editorEntityMode);
+            {
+                ClearBackground(DARKBLUE);
+                RenderMap(Game->level.tileMap);
+                RenderCurrentShape(Game->level.tileMap, Mode::editorEntityMode);
+            }
             break;
         }
         EndMode2D();
@@ -825,7 +842,7 @@ namespace
                 {
                 case Mode::game:
                     {
-                        if (const auto selectedSpell{static_cast<int>(i)}; Game->currentSpellIdx == selectedSpell)
+                        if (const auto selectedSpell{i}; Game->currentSpellIdx == selectedSpell)
                         {
                             Game->currentSpellIdx = {};
                         }
@@ -837,11 +854,12 @@ namespace
                     break;
                 case Mode::editorNormal:
                     {
-                        Game->currentSpellIdx = static_cast<int>(i);
+                        Game->currentSpellIdx = i;
                         Game->messageBoxState = MessageBoxState::deleteSpell;
                     }
                     break;
-                case Mode::editorAddShape: break;
+                case Mode::editorAddShape:
+                case Mode::editorEntityMode: break;
                 }
             }
 
@@ -1015,10 +1033,33 @@ void UpdateAndRender()
     UpdateMusicStream(Game->music); // Update music buffer with new stream data
 
     // Handle rendering
-    BeginDrawing();
+    //BeginDrawing();
+    BeginTextureMode(Game->renderTexture);
     RenderGameScreen();
     RenderUI();
+    EndTextureMode();
+    //EndDrawing();
+    
+    // Post-processing
+    BeginDrawing();
+    ClearBackground(BLACK);
+    BeginShaderMode(Game->shader);
+    const auto dest{
+        Rectangle{
+            .x = 0,
+            .y = 0,
+            .width = static_cast<float>(Game->renderTexture.texture.width),
+            .height = static_cast<float>(-Game->renderTexture.texture.height)
+        }
+    };
+    DrawTextureRec(Game->renderTexture.texture,
+                   dest,
+                   Vector2{.x = 0, .y = 0},
+                   WHITE);
+    EndShaderMode();
     EndDrawing();
+    
+
 }
 
 //main game loop
