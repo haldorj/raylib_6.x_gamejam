@@ -312,11 +312,11 @@ namespace
 
         Game = std::make_unique<GameMemory>();
         Game->hexagon = LoadTexture("assets/textures/flathex.png");
-        Game->explosiveRad = LoadTexture("assets/textures/object/tnt.png");
-        Game->explosiveDirUp = LoadTexture("assets/textures/object/tnt_up.png");
-        Game->explosiveDirLeft = LoadTexture("assets/textures/object/tnt_left.png");
-        Game->explosiveDirRight = LoadTexture("assets/textures/object/tnt_right.png");
-        Game->enemy = LoadTexture("assets/textures/Characters/assassin.png");
+        Game->explosiveRad = LoadTexture("assets/textures/tnt.png");
+        Game->explosiveDirUp = LoadTexture("assets/textures/tnt_up.png");
+        Game->explosiveDirLeft = LoadTexture("assets/textures/tnt_left.png");
+        Game->explosiveDirRight = LoadTexture("assets/textures/tnt_right.png");
+        Game->enemy = LoadTexture("assets/textures/assassin.png");
         RefreshAvailableSaves();
 
         // Game Camera
