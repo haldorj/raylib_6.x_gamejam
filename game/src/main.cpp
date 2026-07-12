@@ -54,6 +54,30 @@ namespace
         return {hex(+1, 0), hex(+1, -1), hex(0, -1), hex(-1, 0), hex(-1, +1), hex(0, +1)};
     }
 
+    [[nodiscard]]auto FindPathToFirstInvalidHexInDirection(const int row, const int col,
+                                              const std::pair<int, int> dir) -> std::vector<std::pair<int, int>>
+    {
+        std::vector<std::pair<int, int>> path;
+
+        int currentRow{row};
+        int currentCol{col};
+
+        while (Game->level.tileMap.ValidIndex(currentRow, currentCol))
+        {
+            const auto [dirX, dirY]{dir};
+            currentRow += dirX;
+            currentCol += dirY;
+            
+            if (!Game->level.tileMap.At(currentRow, currentCol).isValid)
+            {
+                break;
+            }
+
+            path.emplace_back(currentRow, currentCol);
+        }
+
+        return path;
+    }
 
     auto MousePositionInGameScreen() -> bool
     {
@@ -286,18 +310,12 @@ namespace
         Game->cameraUI.zoom = 1.0f; // no scale;
 
         Game->music = LoadMusicStream("assets/Music/Goblins_Dance_(Battle).wav");
-#ifdef _DEBUG
-        SetMusicVolume(Game->music, 0.0f); // Set volume to 0 in debug.
-#elif
         SetMusicVolume(Game->music, MasterVolume * MusicVolume);
-#endif
         Game->fxButton = LoadSound("assets/Sound effects/UI sounds/menu_blip.wav");
         Game->explosionMedium = LoadSound("assets/Sound effects/Object/explosion_medium.wav");
         Game->explosionLarge = LoadSound("assets/Sound effects/Object/explosion_large.wav");
 
         Game->renderTexture = LoadRenderTexture(static_cast<int>(WindowWidth), static_cast<int>(WindowHeight));
-        Game->shader = LoadShader(nullptr, "assets/shaders/shader.fs");
-
         // float timePlayed = 0.0f; // Time played normalized [0.0f..1.0f]
         constexpr float pan = 0.0f; // Default audio pan center [-1.0f..1.0f]
         SetMusicPan(Game->music, pan);
@@ -305,7 +323,11 @@ namespace
         Game->level.tileMap.Init();
         PlayMusicStream(Game->music);
 
+#ifdef PLATFORM_WEB
+        Game->shader = LoadShader(nullptr, "assets/shaders/shader_web.fs");
+#endif
 #ifndef PLATFORM_WEB
+        Game->shader = LoadShader(nullptr, "assets/shaders/shader.fs");
         Running = true;
 #endif
     }
@@ -381,6 +403,54 @@ namespace
                         map.At(adjustedRow, adjustedCol).entity = none;
 
                         for (const auto [row, col] : AxialDirectionVectors(adjustedRow, adjustedCol))
+                        {
+                            explodeArea(map.At(row, col));
+                        }
+                    }
+                    if (map.At(adjustedRow, adjustedCol).entity == explosiveDirUp)
+                    {
+                        PlaySound(Game->explosionMedium);
+                        
+                        auto path{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, North)};
+                        const auto& path2{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, South)};
+                        
+                        // combine 
+                        path.reserve(path.size() + path.size());
+                        path.insert(path.end(), path2.begin(), path2.end());
+                        
+                        for (const auto [row, col] : path)
+                        {
+                            explodeArea(map.At(row, col));
+                        }
+                    }
+                    if (map.At(adjustedRow, adjustedCol).entity == explosiveDirLeft)
+                    {
+                        PlaySound(Game->explosionMedium);
+                        
+                        auto path{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, NorthWest)};
+                        const auto& path2{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, SouthEast)};
+                        
+                        // combine 
+                        path.reserve(path.size() + path.size());
+                        path.insert(path.end(), path2.begin(), path2.end());
+                        
+                        for (const auto [row, col] : path)
+                        {
+                            explodeArea(map.At(row, col));
+                        }
+                    }
+                    if (map.At(adjustedRow, adjustedCol).entity == explosiveDirRight)
+                    {
+                        PlaySound(Game->explosionMedium);
+                        
+                        auto path{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, NorthEast)};
+                        const auto& path2{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, SouthWest)};
+                        
+                        // combine 
+                        path.reserve(path.size() + path.size());
+                        path.insert(path.end(), path2.begin(), path2.end());
+                        
+                        for (const auto [row, col] : path)
                         {
                             explodeArea(map.At(row, col));
                         }
@@ -1039,7 +1109,7 @@ void UpdateAndRender()
     RenderUI();
     EndTextureMode();
     //EndDrawing();
-    
+
     // Post-processing
     BeginDrawing();
     ClearBackground(BLACK);
@@ -1058,8 +1128,6 @@ void UpdateAndRender()
                    WHITE);
     EndShaderMode();
     EndDrawing();
-    
-
 }
 
 //main game loop

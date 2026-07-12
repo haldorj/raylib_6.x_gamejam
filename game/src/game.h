@@ -11,6 +11,15 @@ constexpr auto MaxCameraZoom{8.0f};
 
 constexpr auto HexagonSize{8.0};
 
+
+
+constexpr auto North = std::pair(-1, 0);
+constexpr auto South = std::pair(+1, 0);    
+constexpr auto NorthWest = std::pair(0, -1); 
+constexpr auto NorthEast = std::pair(-1, +1);      
+constexpr auto SouthWest = std::pair(+1, -1); 
+constexpr auto SouthEast = std::pair(0, +1);    
+
 enum class Mode : uint8_t
 {
     game,
