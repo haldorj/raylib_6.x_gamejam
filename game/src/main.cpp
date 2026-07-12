@@ -379,12 +379,27 @@ namespace
     
     void ExplodeArea(MapTile& mapTile);
     void ExplodeBarrelRad(const int adjustedRow, const int adjustedCol);
+    void ExplodeBarrelUp(const int adjustedRow, const int adjustedCol);
+    void ExplodeBarrelLeft(const int adjustedRow, const int adjustedCol);
+    void ExplodeBarrelRight(const int adjustedRow, const int adjustedCol);
 
     auto ExplodeArea(MapTile& mapTile) -> void
     {
         if (mapTile.entity == explosiveRad)
         {
             ExplodeBarrelRad(mapTile.row, mapTile.col);
+        }
+        if (mapTile.entity == explosiveDirUp)
+        {
+            ExplodeBarrelUp(mapTile.row, mapTile.col);
+        }
+        if (mapTile.entity == explosiveDirLeft)
+        {
+            ExplodeBarrelLeft(mapTile.row, mapTile.col);
+        }
+        if (mapTile.entity == explosiveDirRight)
+        {
+            ExplodeBarrelRight(mapTile.row, mapTile.col);
         }
         if (mapTile.entity == enemy)
         {
@@ -408,6 +423,60 @@ namespace
         map.At(adjustedRow, adjustedCol).entity = none;
 
         for (const auto [row, col] : AxialDirectionVectors(adjustedRow, adjustedCol))
+        {
+            ExplodeArea(map.At(row, col));
+        }
+    }
+    
+    void ExplodeBarrelUp(const int adjustedRow, const int adjustedCol)
+    {
+        auto& map{Game->level.tileMap};
+        PlaySound(Game->explosionMedium);
+
+        auto path{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, North)};
+        const auto& path2{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, South)};
+
+        // combine 
+        path.reserve(path.size() + path.size());
+        path.insert(path.end(), path2.begin(), path2.end());
+
+        for (const auto [row, col] : path)
+        {
+            ExplodeArea(map.At(row, col));
+        }
+    }
+    
+    void ExplodeBarrelLeft(const int adjustedRow, const int adjustedCol)
+    {
+        auto& map{Game->level.tileMap};
+        PlaySound(Game->explosionMedium);
+
+        auto path{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, NorthWest)};
+        const auto& path2{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, SouthEast)};
+
+        // combine 
+        path.reserve(path.size() + path.size());
+        path.insert(path.end(), path2.begin(), path2.end());
+
+        for (const auto [row, col] : path)
+        {
+            ExplodeArea(map.At(row, col));
+        }
+    }
+    
+    void ExplodeBarrelRight(const int adjustedRow, const int adjustedCol)
+    {
+        auto& map{Game->level.tileMap};
+        PlaySound(Game->explosionMedium);
+
+        auto path{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, NorthEast)};
+        const auto& path2{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, SouthWest)};
+
+        // combine 
+        path.reserve(path.size() + path.size());
+        path.insert(path.end(), path2.begin(), path2.end());
+
+        for (const auto [row, col] : path)
         {
             ExplodeArea(map.At(row, col));
         }
@@ -451,51 +520,15 @@ namespace
                     }
                     if (map.At(adjustedRow, adjustedCol).entity == explosiveDirUp)
                     {
-                        PlaySound(Game->explosionMedium);
-
-                        auto path{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, North)};
-                        const auto& path2{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, South)};
-
-                        // combine 
-                        path.reserve(path.size() + path.size());
-                        path.insert(path.end(), path2.begin(), path2.end());
-
-                        for (const auto [row, col] : path)
-                        {
-                            ExplodeArea(map.At(row, col));
-                        }
+                        ExplodeBarrelUp(adjustedRow, adjustedCol);
                     }
                     if (map.At(adjustedRow, adjustedCol).entity == explosiveDirLeft)
                     {
-                        PlaySound(Game->explosionMedium);
-
-                        auto path{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, NorthWest)};
-                        const auto& path2{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, SouthEast)};
-
-                        // combine 
-                        path.reserve(path.size() + path.size());
-                        path.insert(path.end(), path2.begin(), path2.end());
-
-                        for (const auto [row, col] : path)
-                        {
-                            ExplodeArea(map.At(row, col));
-                        }
+                        ExplodeBarrelLeft(adjustedRow, adjustedCol);
                     }
                     if (map.At(adjustedRow, adjustedCol).entity == explosiveDirRight)
                     {
-                        PlaySound(Game->explosionMedium);
-
-                        auto path{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, NorthEast)};
-                        const auto& path2{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, SouthWest)};
-
-                        // combine 
-                        path.reserve(path.size() + path.size());
-                        path.insert(path.end(), path2.begin(), path2.end());
-
-                        for (const auto [row, col] : path)
-                        {
-                            ExplodeArea(map.At(row, col));
-                        }
+                        ExplodeBarrelRight(adjustedRow, adjustedCol);
                     }
                     if (map.At(adjustedRow, adjustedCol).entity == enemy)
                     {
