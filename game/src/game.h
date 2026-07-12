@@ -42,6 +42,7 @@ enum class Spell : uint8_t
 enum class MessageBoxState : uint8_t
 {
     none,
+    levelWin,
     saveShape,
     deleteShape,
     deleteSpell,
@@ -84,6 +85,8 @@ struct GameMemory
 
     std::optional<int> currentShapeIdx;
     std::optional<int> currentSpellIdx;
+    
+    int numOfEnemies;
 
     MessageBoxState messageBoxState{MessageBoxState::none};
     Entity currentEntity{Entity::explosiveRad};

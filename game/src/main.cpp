@@ -72,8 +72,8 @@ namespace
     }
 
     [[nodiscard]] auto FindPathToFirstInvalidHexInDirection(const int row, const int col,
-                                                            const std::pair<int, int> dir) -> std::vector<std::pair<
-        int, int>>
+                                                            const std::pair<int, int> dir)
+        -> std::vector<std::pair<int, int>>
     {
         std::vector<std::pair<int, int>> path;
 
@@ -811,6 +811,21 @@ namespace
                 Game->messageBoxState = MessageBoxState::none;
             }
         }
+        
+        if (Game->messageBoxState == MessageBoxState::levelWin)
+        {
+            const auto result{
+                GuiMessageBox(UI::MessageBox,
+                              "Win",
+                              "You won!",
+                              "Next Level")
+            };
+            if (result == 1) //YES
+            {
+                // NextLevel
+                Game->messageBoxState = MessageBoxState::none;
+            }
+        }
     }
 
     auto RenderMergeWindow() -> void
@@ -1124,7 +1139,14 @@ void UpdateAndRender()
                                         Vector2{.x = Game->cameraGame.zoom, .y = Game->cameraGame.zoom});
 
     UpdateMusicStream(Game->music); // Update music buffer with new stream data
-
+    
+    // Win condition
+    Game->numOfEnemies = CurrentEnemyCount();
+    if (Game->numOfEnemies <= 0 && Game->mode == Mode::game)
+    {
+        Game->messageBoxState = MessageBoxState::levelWin;
+    }
+    
     // Handle rendering
     //BeginDrawing();
     BeginTextureMode(Game->renderTexture);
