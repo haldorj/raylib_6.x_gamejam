@@ -4,12 +4,6 @@
 #include "tilemap.h"
 #include "game.h"
 
-#ifndef PLATFORM_WEB
-#define GLSL_VERSION 330
-#else   // PLATFORM_ANDROID, PLATFORM_WEB
-#define GLSL_VERSION 100
-#endif
-
 namespace
 {
     std::unique_ptr<GameMemory> Game;
@@ -382,17 +376,45 @@ namespace
         }
         return true;
     }
+    
+    void ExplodeArea(MapTile& mapTile);
+    void ExplodeBarrelRad(const int adjustedRow, const int adjustedCol);
 
+    auto ExplodeArea(MapTile& mapTile) -> void
+    {
+        if (mapTile.entity == explosiveRad)
+        {
+            ExplodeBarrelRad(mapTile.row, mapTile.col);
+        }
+        if (mapTile.entity == enemy)
+        {
+            mapTile.entity = none;
+        }
+        if (mapTile.entity == enemy)
+        {
+            mapTile.entity = none;
+        }
+        if (mapTile.entity == enemy)
+        {
+            mapTile.entity = none;
+        }
+    };
+    
+    void ExplodeBarrelRad(const int adjustedRow, const int adjustedCol)
+    {
+        auto& map{Game->level.tileMap};
+        // Explode in a radius around the entity
+        PlaySound(Game->explosionMedium);
+        map.At(adjustedRow, adjustedCol).entity = none;
+
+        for (const auto [row, col] : AxialDirectionVectors(adjustedRow, adjustedCol))
+        {
+            ExplodeArea(map.At(row, col));
+        }
+    }
+    
     auto PlaceCurrentShape() -> void
     {
-        const auto explodeArea = [](MapTile& mapTile)
-        {
-            if (mapTile.entity == enemy)
-            {
-                mapTile.entity = none;
-            }
-        };
-
         auto& map{Game->level.tileMap};
         if (!CheckShapeCollisionWithMap(map))
         {
@@ -405,7 +427,7 @@ namespace
             return;
         }
 
-        for (auto& shape : Game->level.shapes.at(Game->currentShapeIdx.value()).first)
+        for (const auto& shape : Game->level.shapes.at(Game->currentShapeIdx.value()).first)
         {
             const auto adjustedRow{shape.row + mousePos.row};
             const auto adjustedCol{shape.col + mousePos.col};
@@ -425,14 +447,7 @@ namespace
                 {
                     if (map.At(adjustedRow, adjustedCol).entity == explosiveRad)
                     {
-                        // Explode in a radius around the entity
-                        PlaySound(Game->explosionMedium);
-                        map.At(adjustedRow, adjustedCol).entity = none;
-
-                        for (const auto [row, col] : AxialDirectionVectors(adjustedRow, adjustedCol))
-                        {
-                            explodeArea(map.At(row, col));
-                        }
+                        ExplodeBarrelRad(adjustedRow, adjustedCol);
                     }
                     if (map.At(adjustedRow, adjustedCol).entity == explosiveDirUp)
                     {
@@ -447,7 +462,7 @@ namespace
 
                         for (const auto [row, col] : path)
                         {
-                            explodeArea(map.At(row, col));
+                            ExplodeArea(map.At(row, col));
                         }
                     }
                     if (map.At(adjustedRow, adjustedCol).entity == explosiveDirLeft)
@@ -463,7 +478,7 @@ namespace
 
                         for (const auto [row, col] : path)
                         {
-                            explodeArea(map.At(row, col));
+                            ExplodeArea(map.At(row, col));
                         }
                     }
                     if (map.At(adjustedRow, adjustedCol).entity == explosiveDirRight)
@@ -479,8 +494,12 @@ namespace
 
                         for (const auto [row, col] : path)
                         {
-                            explodeArea(map.At(row, col));
+                            ExplodeArea(map.At(row, col));
                         }
+                    }
+                    if (map.At(adjustedRow, adjustedCol).entity == enemy)
+                    {
+                        ExplodeArea(map.At(adjustedRow, adjustedCol));
                     }
                 }
                 break;
@@ -1163,7 +1182,7 @@ void UpdateAndRender()
     // Post-processing
     BeginDrawing();
     ClearBackground(BLACK);
-    //BeginShaderMode(Game->shader);
+    BeginShaderMode(Game->shader);
     const auto dest{
         Rectangle{
             .x = 0,
@@ -1176,7 +1195,7 @@ void UpdateAndRender()
                    dest,
                    Vector2{.x = 0, .y = 0},
                    WHITE);
-    //EndShaderMode();
+    EndShaderMode();
     EndDrawing();
 }
 
