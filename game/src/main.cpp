@@ -345,6 +345,10 @@ namespace
         // Init map
         Game->level.tileMap.Init();
         PlayMusicStream(Game->music);
+        
+        // LOAD FIRST LEVEL
+        Game->currentLevelIndex = 0;
+        LoadLevel(Game->availableSaves.at(Game->currentLevelIndex));
 
 #ifdef PLATFORM_WEB
         Game->shader = LoadShader(nullptr, "assets/shaders/shader_web.fs");
@@ -824,6 +828,7 @@ namespace
             {
                 // NextLevel
                 Game->messageBoxState = MessageBoxState::none;
+                LoadLevel(Game->availableSaves.at(Game->currentLevelIndex));
             }
         }
     }

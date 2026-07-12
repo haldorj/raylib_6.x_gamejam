@@ -85,6 +85,7 @@ struct GameMemory
 
     std::optional<int> currentShapeIdx;
     std::optional<int> currentSpellIdx;
+    int currentLevelIndex{0};
     
     int numOfEnemies;
 
