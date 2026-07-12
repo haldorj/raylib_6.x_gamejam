@@ -432,7 +432,7 @@ namespace
     {
         auto& map{Game->level.tileMap};
         PlaySound(Game->explosionMedium);
-
+        map.At(adjustedRow, adjustedCol).entity = none;
         auto path{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, North)};
         const auto& path2{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, South)};
 
@@ -450,7 +450,7 @@ namespace
     {
         auto& map{Game->level.tileMap};
         PlaySound(Game->explosionMedium);
-
+        map.At(adjustedRow, adjustedCol).entity = none;
         auto path{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, NorthWest)};
         const auto& path2{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, SouthEast)};
 
@@ -468,7 +468,7 @@ namespace
     {
         auto& map{Game->level.tileMap};
         PlaySound(Game->explosionMedium);
-
+        map.At(adjustedRow, adjustedCol).entity = none;
         auto path{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, NorthEast)};
         const auto& path2{FindPathToFirstInvalidHexInDirection(adjustedRow, adjustedCol, SouthWest)};
 
