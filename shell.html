@@ -1,0 +1,59 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: black;
+}
+
+canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="canvas"></canvas>
+
+<script>
+// Disable right-click everywhere
+document.addEventListener("contextmenu", function(e) {
+    e.preventDefault();
+    return false;
+}, false);
+
+// Disable mouse middle/right browser actions
+document.addEventListener("mousedown", function(e) {
+    if (e.button === 2) {
+        e.preventDefault();
+    }
+}, false);
+
+var Module = {
+    canvas: document.getElementById("canvas")
+};
+
+// Also attach directly to canvas
+Module.canvas.addEventListener("contextmenu", function(e) {
+    e.preventDefault();
+    return false;
+});
+
+</script>
+
+<script src="game.js"></script>
+
+{{{ SCRIPT }}}
+
+</body>
+</html>
