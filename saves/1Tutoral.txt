@@ -1,10 +1,13 @@
 TILEMAP 7
+-2 -5 0
 -2 1 5
 -2 2 0
 -1 0 0
 -1 1 1
 -1 2 0
-0 0 0
 0 1 0
-SHAPES 0
-SPELLS 0
+SHAPES 1
+1
+0 0
+SPELLS 1
+0
