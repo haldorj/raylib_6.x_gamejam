@@ -332,7 +332,7 @@ namespace
         // UI Camera
         Game->cameraUI.zoom = 1.0f; // no scale;
 
-        Game->music = LoadMusicStream("assets/Music/Goblins_Dance_(Battle).wav");
+        Game->music = LoadMusicStream("assets/Music/WaveyBlue.wav");
         SetMusicVolume(Game->music, MasterVolume * MusicVolume);
         Game->fxButton = LoadSound("assets/Sound effects/UI sounds/menu_blip.wav");
         Game->explosionMedium = LoadSound("assets/Sound effects/Object/explosion_medium.wav");
