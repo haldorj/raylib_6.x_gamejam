@@ -847,7 +847,11 @@ namespace
             {
                 // NextLevel
                 Game->messageBoxState = MessageBoxState::none;
+                
                 Game->LevelCounter++;
+                if(6==Game->LevelCounter)
+                    Game->LevelCounter=0; 
+
                 LoadLevel(Game->availableSaves.at(Game->currentLevelIndex+Game->LevelCounter));
             }
         }
